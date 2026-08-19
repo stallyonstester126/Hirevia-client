@@ -1,6 +1,9 @@
 import { ApiResponse } from '../types'
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/v1'
+const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/v1'
+const BASE_URL = rawApiUrl.endsWith('/v1')
+  ? rawApiUrl
+  : `${rawApiUrl.replace(/\/+$/, '')}/v1`
 
 export class ApiError extends Error {
   statusCode: number
