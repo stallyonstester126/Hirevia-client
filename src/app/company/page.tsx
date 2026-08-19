@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { apiClient } from '../../lib/api-client'
 import { useAuth } from '../../context/AuthContext'
-import { IJob, IJobsResponse, EJobStatus, EPaymentStatus, ICompanyProfile } from '../../types'
+import { IJob, IJobsResponse, EJobStatus, ICompanyProfile, ISubscriptionStatusResponse, ICheckoutResponse } from '../../types'
 import StatusBadge from '../../components/StatusBadge'
 import LoadingSpinner from '../../components/LoadingSpinner'
 import CompanyProfileModal from '../../components/CompanyProfileModal'
@@ -16,6 +16,8 @@ export default function CompanyDashboard() {
   const [profileData, setProfileData] = useState<ICompanyProfile | null>(null)
   const [showProfileModal, setShowProfileModal] = useState(false)
   const [profileSavedMsg, setProfileSavedMsg] = useState('')
+  const [isSubscribed, setIsSubscribed] = useState(false)
+  const [isCheckingOut, setIsCheckingOut] = useState(false)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -25,9 +27,10 @@ export default function CompanyDashboard() {
   const fetchDashboardData = async () => {
     setLoading(true)
     try {
-      const [jobsRes, profileRes] = await Promise.allSettled([
+      const [jobsRes, profileRes, subRes] = await Promise.allSettled([
         apiClient.get<IJobsResponse>('/company/jobs', { params: { limit: 6 } }),
         apiClient.get<ICompanyProfile>('/company/profile'),
+        apiClient.get<ISubscriptionStatusResponse>('/company/jobs/subscription/status'),
       ])
 
       if (jobsRes.status === 'fulfilled' && jobsRes.value.success) {
@@ -44,14 +47,30 @@ export default function CompanyDashboard() {
           setShowProfileModal(true)
         }
       } else {
-        // Profile not found or not created yet
         setHasProfile(false)
         setShowProfileModal(true)
+      }
+
+      if (subRes.status === 'fulfilled' && subRes.value.success) {
+        setIsSubscribed(subRes.value.data.subscriptionStatus === 'PAID')
       }
     } catch {
       // Ignored
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleSubscribe = async () => {
+    setIsCheckingOut(true)
+    try {
+      const res = await apiClient.post<ICheckoutResponse>('/company/jobs/subscription/checkout')
+      if (res.success && res.data?.checkoutUrl) {
+        window.location.href = res.data.checkoutUrl
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to start membership checkout. Please try again.')
+      setIsCheckingOut(false)
     }
   }
 
@@ -64,7 +83,6 @@ export default function CompanyDashboard() {
 
   const publishedCount = jobs.filter((j) => j.status === EJobStatus.PUBLISHED).length
   const draftCount = jobs.filter((j) => j.status === EJobStatus.DRAFT).length
-  const closedCount = jobs.filter((j) => j.status === EJobStatus.CLOSED).length
 
   if (loading) {
     return (
@@ -105,6 +123,37 @@ export default function CompanyDashboard() {
         </div>
       )}
 
+      {/* Subscription Callout Banner if UNPAID */}
+      {!isSubscribed && (
+        <div className="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-blue-500/10 border border-amber-300 p-5 rounded-3xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs animate-fadeIn">
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-amber-500/20">
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm sm:text-base font-bold text-slate-900">Unlock Unlimited Job Postings</h3>
+                <span className="text-[10px] font-extrabold uppercase bg-amber-100 text-amber-800 px-2 py-0.5 rounded-md">
+                  $10 One-Time
+                </span>
+              </div>
+              <p className="text-xs sm:text-sm text-slate-600 mt-0.5">
+                Pay once and post as many engineering and technical positions as you need with no recurring or per-job fees.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={handleSubscribe}
+            disabled={isCheckingOut}
+            className="px-5 py-2.5 bg-[#146BFF] hover:bg-[#0E5CE8] text-white text-xs sm:text-sm font-bold rounded-xl shadow-md shadow-blue-500/20 transition shrink-0 cursor-pointer disabled:opacity-60"
+          >
+            {isCheckingOut ? 'Opening Stripe...' : 'Activate Membership ($10) →'}
+          </button>
+        </div>
+      )}
+
       {/* Incomplete Profile Callout Banner if user skipped modal */}
       {!hasProfile && (
         <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/80 p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
@@ -138,12 +187,23 @@ export default function CompanyDashboard() {
       {/* Welcome Banner */}
       <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 rounded-3xl p-6 sm:p-8 text-white shadow-lg shadow-slate-900/10 relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="space-y-2 relative z-10">
-          <span className="text-xs font-bold uppercase tracking-wider text-blue-400">Employer Recruitment Portal</span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-blue-400">Employer Recruitment Portal</span>
+            {isSubscribed ? (
+              <span className="text-[10px] font-extrabold uppercase tracking-wider bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 px-2.5 py-0.5 rounded-full">
+                ✓ Unlimited Plan Active
+              </span>
+            ) : (
+              <span className="text-[10px] font-extrabold uppercase tracking-wider bg-amber-500/20 border border-amber-400/40 text-amber-300 px-2.5 py-0.5 rounded-full">
+                One-Time Activation Required
+              </span>
+            )}
+          </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
             Welcome, {profileData?.companyName || user?.name || 'Recruiting Team'}! 👋
           </h1>
           <p className="text-sm text-slate-300 max-w-xl leading-relaxed">
-            Manage your open engineering positions, pay posting fees with Stripe, review applicants, and leverage AI job-match scoring.
+            Manage your open engineering positions, review applicants, and leverage AI job-match scoring.
           </p>
         </div>
 
@@ -197,28 +257,30 @@ export default function CompanyDashboard() {
           </div>
           <p className="text-3xl font-extrabold text-slate-900">{draftCount}</p>
           <p className="text-xs text-amber-600 font-medium group-hover:underline">
-            {draftCount > 0 ? 'Awaiting Stripe payment & publish →' : 'No pending drafts →'}
+            {isSubscribed ? 'Ready to publish without fees →' : 'Requires $10 membership to publish →'}
           </p>
         </Link>
 
-        {/* Metric 3 */}
-        <Link
-          href="/company/profile"
-          className="group bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs hover:border-blue-300 hover:shadow-md transition space-y-2"
+        {/* Metric 3: Membership Plan */}
+        <div
+          onClick={!isSubscribed ? handleSubscribe : undefined}
+          className={`bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs transition space-y-2 ${!isSubscribed ? 'cursor-pointer hover:border-amber-300 hover:shadow-md' : ''}`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Company Brand</span>
-            <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Posting Membership</span>
+            <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${isSubscribed ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
           </div>
-          <p className="text-3xl font-extrabold text-slate-900">{hasProfile ? 'Active' : 'Incomplete'}</p>
-          <p className="text-xs text-purple-600 font-medium group-hover:underline">
-            {hasProfile ? 'Edit organization info →' : 'Complete company details →'}
+          <p className="text-2xl sm:text-3xl font-extrabold text-slate-900">
+            {isSubscribed ? 'Unlimited' : '$10 Once'}
           </p>
-        </Link>
+          <p className={`text-xs font-medium ${isSubscribed ? 'text-emerald-600' : 'text-amber-600 underline'}`}>
+            {isSubscribed ? 'Unlimited job postings active' : 'Click to activate membership →'}
+          </p>
+        </div>
       </div>
 
       {/* Recent Openings */}
@@ -257,8 +319,8 @@ export default function CompanyDashboard() {
                   <div className="flex items-center justify-between gap-2">
                     <StatusBadge status={job.status} size="sm" />
                     {job.status === EJobStatus.DRAFT && (
-                      <span className="text-[11px] font-semibold text-amber-600">
-                        {job.paymentStatus === EPaymentStatus.PAID ? 'Fee Paid' : 'Payment Required'}
+                      <span className="text-[11px] font-semibold text-slate-500">
+                        {isSubscribed ? 'Draft (Ready to Publish)' : 'Draft (Requires Membership)'}
                       </span>
                     )}
                   </div>

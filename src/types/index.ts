@@ -19,6 +19,8 @@ export interface IUser {
     timestamp?: string
   }
   consent: boolean
+  subscriptionStatus?: 'UNPAID' | 'PAID'
+  subscriptionPaidAt?: string | null
   createdAt: string
   updatedAt: string
 }
@@ -199,14 +201,21 @@ export interface IJobsResponse {
 
 export interface IPayment {
   _id?: string
-  jobId: string
+  jobId?: string | null
   companyId: string
   stripeSessionId: string
+  stripePaymentIntentId?: string
   amount: number
   currency: string
   status: 'PENDING' | 'SUCCEEDED' | 'FAILED'
+  type?: 'SUBSCRIPTION' | 'JOB_POSTING'
   createdAt?: string
   updatedAt?: string
+}
+
+export interface ISubscriptionStatusResponse {
+  subscriptionStatus: 'UNPAID' | 'PAID'
+  subscriptionPaidAt?: string | null
 }
 
 export interface IJobPaymentResponse {
@@ -216,6 +225,7 @@ export interface IJobPaymentResponse {
 
 export interface ICheckoutResponse {
   checkoutUrl: string
+  sessionId?: string
 }
 
 // ================= APPLICATIONS & MATCH SCORE =================

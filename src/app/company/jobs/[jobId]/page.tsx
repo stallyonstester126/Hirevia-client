@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { apiClient, ApiError } from '../../../../lib/api-client'
-import { IJob, EJobStatus, EPaymentStatus, IJobPaymentResponse, ICheckoutResponse } from '../../../../types'
+import { IJob, EJobStatus, EPaymentStatus, ICheckoutResponse, ISubscriptionStatusResponse } from '../../../../types'
 import StatusBadge from '../../../../components/StatusBadge'
 import LoadingSpinner from '../../../../components/LoadingSpinner'
 
@@ -14,7 +14,7 @@ export default function CompanyJobDetailPage() {
   const jobId = params.jobId as string
 
   const [job, setJob] = useState<IJob | null>(null)
-  const [paymentInfo, setPaymentInfo] = useState<IJobPaymentResponse | null>(null)
+  const [isSubscribed, setIsSubscribed] = useState(false)
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState(false)
 
@@ -24,24 +24,24 @@ export default function CompanyJobDetailPage() {
 
   useEffect(() => {
     if (jobId) {
-      fetchJobAndPayment()
+      fetchJobAndSubscription()
     }
   }, [jobId])
 
-  const fetchJobAndPayment = async () => {
+  const fetchJobAndSubscription = async () => {
     setLoading(true)
     setErrorMsg('')
     try {
-      const [jobRes, paymentRes] = await Promise.all([
+      const [jobRes, subRes] = await Promise.all([
         apiClient.get<IJob>(`/company/jobs/${jobId}`),
-        apiClient.get<IJobPaymentResponse>(`/company/jobs/${jobId}/payment`).catch(() => null),
+        apiClient.get<ISubscriptionStatusResponse>('/company/jobs/subscription/status').catch(() => null),
       ])
 
       if (jobRes.success && jobRes.data) {
         setJob(jobRes.data)
       }
-      if (paymentRes?.success && paymentRes.data) {
-        setPaymentInfo(paymentRes.data)
+      if (subRes?.success && subRes.data) {
+        setIsSubscribed(subRes.data.subscriptionStatus === 'PAID')
       }
     } catch (err: any) {
       setErrorMsg(err.message || 'Failed to load job details.')
@@ -50,20 +50,16 @@ export default function CompanyJobDetailPage() {
     }
   }
 
-  const handleInitiatePayment = async () => {
+  const handleInitiateSubscription = async () => {
     setActionLoading(true)
     setErrorMsg('')
     try {
-      const res = await apiClient.post<ICheckoutResponse>(`/company/jobs/${jobId}/checkout`)
+      const res = await apiClient.post<ICheckoutResponse>('/company/jobs/subscription/checkout')
       if (res.success && res.data?.checkoutUrl) {
         window.location.href = res.data.checkoutUrl
       }
     } catch (err: any) {
-      if (err instanceof ApiError && err.statusCode === 409) {
-        setErrorMsg('A checkout session is already pending for this job. Check your Stripe tab or retry shortly.')
-      } else {
-        setErrorMsg(err.message || 'Failed to start Stripe checkout.')
-      }
+      setErrorMsg(err.message || 'Failed to start membership checkout.')
       setActionLoading(false)
     }
   }
@@ -79,7 +75,11 @@ export default function CompanyJobDetailPage() {
         setSuccessMsg('Job is now active and published to candidates in the marketplace!')
       }
     } catch (err: any) {
-      setErrorMsg(err.message || 'Cannot publish unpaid or ineligible job.')
+      if (err instanceof ApiError && err.statusCode === 400 && !isSubscribed) {
+        setErrorMsg('Company membership is required to publish jobs. Activate your $10 membership below.')
+      } else {
+        setErrorMsg(err.message || 'Cannot publish job.')
+      }
     } finally {
       setActionLoading(false)
     }
@@ -151,7 +151,7 @@ export default function CompanyJobDetailPage() {
 
   const isDraft = job.status === EJobStatus.DRAFT
   const isPublished = job.status === EJobStatus.PUBLISHED
-  const isPaid = job.paymentStatus === EPaymentStatus.PAID
+  const isCanPublish = isSubscribed || job.paymentStatus === EPaymentStatus.PAID
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
@@ -176,11 +176,21 @@ export default function CompanyJobDetailPage() {
       )}
 
       {errorMsg && (
-        <div className="bg-red-50 border border-red-200 p-4 rounded-xl text-sm text-red-800 flex items-center gap-2.5 animate-fadeIn">
-          <svg className="w-5 h-5 text-red-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <span>{errorMsg}</span>
+        <div className="bg-red-50 border border-red-200 p-4 rounded-xl text-sm text-red-800 flex items-center justify-between gap-3 animate-fadeIn">
+          <div className="flex items-center gap-2.5">
+            <svg className="w-5 h-5 text-red-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>{errorMsg}</span>
+          </div>
+          {!isSubscribed && (
+            <button
+              onClick={handleInitiateSubscription}
+              className="px-3 py-1 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-lg shrink-0 cursor-pointer"
+            >
+              Pay $10 Now →
+            </button>
+          )}
         </div>
       )}
 
@@ -196,6 +206,11 @@ export default function CompanyJobDetailPage() {
               <span className="text-xs font-semibold text-slate-600 bg-slate-100 px-2.5 py-0.5 rounded-md">
                 {job.employmentType?.replace('_', ' ')}
               </span>
+              {isSubscribed && (
+                <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-md">
+                  Unlimited Plan Active ✓
+                </span>
+              )}
             </div>
 
             <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
@@ -269,50 +284,45 @@ export default function CompanyJobDetailPage() {
         </div>
       </div>
 
-      {/* Stripe Payment & Publishing Lifecycle Box */}
+      {/* Publishing Lifecycle Box */}
       <div className="bg-white p-6 sm:p-7 rounded-3xl border border-slate-200/80 shadow-xs space-y-4">
         <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
           <svg className="w-5 h-5 text-[#146BFF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
           </svg>
-          Publishing & Payment Status
+          Publishing & Lifecycle Status
         </h2>
 
         {/* State A: DRAFT & UNPAID */}
-        {isDraft && !isPaid && (
+        {isDraft && !isCanPublish && (
           <div className="p-5 bg-amber-50/70 rounded-2xl border border-amber-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="space-y-1">
-              <span className="text-xs font-bold text-amber-800 uppercase tracking-wider">Step 1: One-Time Posting Fee Required</span>
-              <p className="text-sm font-bold text-slate-900">Publishing fee: $10.00 USD (flat rate)</p>
+              <span className="text-xs font-bold text-amber-800 uppercase tracking-wider">Company Membership Activation Required</span>
+              <p className="text-sm font-bold text-slate-900">One-Time Fee: $10.00 USD (Unlimited Job Postings)</p>
               <p className="text-xs text-slate-600">
-                To publish this opening to the verified candidate marketplace, complete checkout securely via Stripe.
+                Unlock permanent unlimited postings for your company. Once paid, all current and future job posts can be published immediately.
               </p>
-              {paymentInfo?.payment?.status === 'PENDING' && (
-                <p className="text-xs font-semibold text-amber-700 pt-1">
-                  ⏳ Payment checkout session is currently pending.
-                </p>
-              )}
             </div>
 
             <button
               type="button"
-              onClick={handleInitiatePayment}
+              onClick={handleInitiateSubscription}
               disabled={actionLoading}
               className="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white text-xs sm:text-sm font-semibold rounded-xl shadow-sm transition shrink-0 disabled:opacity-50 cursor-pointer"
             >
-              {actionLoading ? 'Connecting to Stripe...' : 'Pay with Stripe ($10) →'}
+              {actionLoading ? 'Connecting to Stripe...' : 'Activate Membership ($10) →'}
             </button>
           </div>
         )}
 
-        {/* State B: DRAFT & PAID */}
-        {isDraft && isPaid && (
+        {/* State B: DRAFT & CAN PUBLISH */}
+        {isDraft && isCanPublish && (
           <div className="p-5 bg-emerald-50/70 rounded-2xl border border-emerald-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="space-y-1">
-              <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider">Step 2: Payment Confirmed</span>
-              <p className="text-sm font-bold text-slate-900">Posting fee paid successfully ✓</p>
+              <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider">Ready to Go Live</span>
+              <p className="text-sm font-bold text-slate-900">Unlimited Membership Active ✓</p>
               <p className="text-xs text-slate-600">
-                Your job is ready to go live. Click &apos;Publish Job&apos; to immediately open applications for candidates.
+                Your opening is ready. Click &apos;Publish Job Live&apos; to immediately open applications for candidates.
               </p>
             </div>
 

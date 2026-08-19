@@ -34,28 +34,16 @@ vi.mock('../lib/api-client', () => {
   }
 })
 
-describe('CompanyJobsPage Job Management & Stripe Flow', () => {
+describe('CompanyJobsPage Job Management & Subscription Flow', () => {
   const mockJobs = [
     {
-      _id: 'job-draft-unpaid',
-      title: 'Draft Unpaid Job',
-      description: 'Job awaiting payment',
+      _id: 'job-draft-1',
+      title: 'Draft Engineering Job',
+      description: 'Job awaiting publish',
       status: EJobStatus.DRAFT,
       paymentStatus: EPaymentStatus.UNPAID,
       employmentType: EEmploymentType.FULL_TIME,
       experienceLevel: EExperienceLevel.MID,
-      workplaceType: EWorkplaceType.REMOTE,
-      location: { city: 'Seattle', country: 'USA' },
-      createdAt: '2026-08-15T00:00:00.000Z',
-    },
-    {
-      _id: 'job-draft-paid',
-      title: 'Draft Paid Job',
-      description: 'Job ready to publish',
-      status: EJobStatus.DRAFT,
-      paymentStatus: EPaymentStatus.PAID,
-      employmentType: EEmploymentType.FULL_TIME,
-      experienceLevel: EExperienceLevel.SENIOR,
       workplaceType: EWorkplaceType.REMOTE,
       location: { city: 'Seattle', country: 'USA' },
       createdAt: '2026-08-15T00:00:00.000Z',
@@ -76,94 +64,105 @@ describe('CompanyJobsPage Job Management & Stripe Flow', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(apiClient.get).mockResolvedValue({
-      success: true,
-      statusCode: 200,
-      message: 'Success',
-      data: {
-        jobs: mockJobs,
-        pagination: { page: 1, limit: 10, total: 3, totalPages: 1 },
-      },
+    vi.mocked(apiClient.get).mockImplementation(async (url: string) => {
+      if (url.includes('/subscription/status')) {
+        return {
+          success: true,
+          statusCode: 200,
+          message: 'Success',
+          data: { subscriptionStatus: 'PAID' },
+        }
+      }
+      return {
+        success: true,
+        statusCode: 200,
+        message: 'Success',
+        data: {
+          jobs: mockJobs,
+          pagination: { page: 1, limit: 10, total: 2, totalPages: 1 },
+        },
+      }
     })
   })
 
-  it('renders company jobs with status badges and appropriate lifecycle actions', async () => {
+  it('renders company jobs with unlimited plan badge and direct publish action for subscribed company', async () => {
     render(<CompanyJobsPage />)
 
-    expect(await screen.findByText('Draft Unpaid Job')).toBeInTheDocument()
-    expect(screen.getByText('Draft Paid Job')).toBeInTheDocument()
+    expect(await screen.findByText('Draft Engineering Job')).toBeInTheDocument()
     expect(screen.getByText('Live Published Job')).toBeInTheDocument()
+    expect(screen.getByText(/Unlimited Plan Active/i)).toBeInTheDocument()
 
-    // "Pay Fee ($10)" is present for unpaid draft
-    expect(screen.getByRole('button', { name: /Pay Fee \(\$10\)/i })).toBeInTheDocument()
-
-    // "Publish Job" is present for paid draft
+    // "Publish Job" is present for draft job
     expect(screen.getByRole('button', { name: /Publish Job/i })).toBeInTheDocument()
 
     // "Close Job" is present for published job
     expect(screen.getByRole('button', { name: /Close Job/i })).toBeInTheDocument()
 
-    // Delete buttons are present only for DRAFT jobs (2 drafts -> 2 delete buttons)
+    // Delete buttons are present only for DRAFT jobs
     const deleteButtons = screen.getAllByLabelText(/Delete draft job/i)
-    expect(deleteButtons).toHaveLength(2)
+    expect(deleteButtons).toHaveLength(1)
   })
 
-  it('initiates Stripe checkout session on unpaid draft and redirects to checkout URL', async () => {
+  it('initiates subscription checkout session and redirects to checkout URL when unpaid', async () => {
     delete (window as any).location
     window.location = { href: '' } as any
+
+    vi.mocked(apiClient.get).mockImplementation(async (url: string) => {
+      if (url.includes('/subscription/status')) {
+        return {
+          success: true,
+          statusCode: 200,
+          message: 'Success',
+          data: { subscriptionStatus: 'UNPAID' },
+        }
+      }
+      return {
+        success: true,
+        statusCode: 200,
+        message: 'Success',
+        data: {
+          jobs: mockJobs,
+          pagination: { page: 1, limit: 10, total: 2, totalPages: 1 },
+        },
+      }
+    })
 
     vi.mocked(apiClient.post).mockResolvedValue({
       success: true,
       statusCode: 201,
       message: 'Success',
-      data: { checkoutUrl: 'https://checkout.stripe.com/pay/cs_test_123' },
+      data: { checkoutUrl: 'https://checkout.stripe.com/pay/cs_test_sub' },
     })
 
     render(<CompanyJobsPage />)
-    await screen.findByText('Draft Unpaid Job')
+    await screen.findByText('Draft Engineering Job')
 
-    const payButton = screen.getByRole('button', { name: /Pay Fee \(\$10\)/i })
+    const payButton = screen.getByRole('button', { name: /Unlock \(\$10\) & Publish/i })
     fireEvent.click(payButton)
 
     await waitFor(() => {
-      expect(apiClient.post).toHaveBeenCalledWith('/company/jobs/job-draft-unpaid/checkout')
+      expect(apiClient.post).toHaveBeenCalledWith('/company/jobs/subscription/checkout')
     })
 
-    expect(window.location.href).toBe('https://checkout.stripe.com/pay/cs_test_123')
+    expect(window.location.href).toBe('https://checkout.stripe.com/pay/cs_test_sub')
   })
 
-  it('handles duplicate checkout attempt (409 conflict) cleanly', async () => {
-    vi.mocked(apiClient.post).mockRejectedValue(
-      new ApiError('Checkout session is already pending for this job', 409)
-    )
-
-    render(<CompanyJobsPage />)
-    await screen.findByText('Draft Unpaid Job')
-
-    const payButton = screen.getByRole('button', { name: /Pay Fee \(\$10\)/i })
-    fireEvent.click(payButton)
-
-    expect(
-      await screen.findByText(/A checkout session is already pending for this job/i)
-    ).toBeInTheDocument()
-  })
-
-  it('publishes paid draft job successfully', async () => {
+  it('publishes draft job successfully when company is subscribed', async () => {
     vi.mocked(apiClient.patch).mockResolvedValue({
       success: true,
       statusCode: 200,
       message: 'Success',
-      data: { ...mockJobs[1], status: EJobStatus.PUBLISHED },
+      data: { ...mockJobs[0], status: EJobStatus.PUBLISHED },
     })
 
     render(<CompanyJobsPage />)
-    await screen.findByText('Draft Paid Job')
+    await screen.findByText('Draft Engineering Job')
 
     const publishButton = screen.getByRole('button', { name: /Publish Job/i })
     fireEvent.click(publishButton)
 
     await waitFor(() => {
-      expect(apiClient.patch).toHaveBeenCalledWith('/company/jobs/job-draft-paid/publish')
+      expect(apiClient.patch).toHaveBeenCalledWith('/company/jobs/job-draft-1/publish')
     })
 
     expect(await screen.findByText(/Job successfully published/i)).toBeInTheDocument()

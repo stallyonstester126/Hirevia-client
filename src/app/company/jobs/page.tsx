@@ -2,17 +2,16 @@
 
 import React, { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { apiClient, ApiError } from '../../../lib/api-client'
-import { IJob, IJobsResponse, EJobStatus, EPaymentStatus, ICheckoutResponse } from '../../../types'
+import { IJob, IJobsResponse, EJobStatus, ICheckoutResponse, ISubscriptionStatusResponse } from '../../../types'
 import StatusBadge from '../../../components/StatusBadge'
 import Pagination from '../../../components/Pagination'
 import LoadingSpinner from '../../../components/LoadingSpinner'
 
 export default function CompanyJobsPage() {
-  const router = useRouter()
   const [jobs, setJobs] = useState<IJob[]>([])
   const [loading, setLoading] = useState(true)
+  const [isSubscribed, setIsSubscribed] = useState(false)
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null)
   const [filterStatus, setFilterStatus] = useState<string>('ALL')
 
@@ -29,19 +28,27 @@ export default function CompanyJobsPage() {
   const [errorMsg, setErrorMsg] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
 
-  const fetchJobs = useCallback(async (targetPage = 1) => {
+  const fetchJobsAndSubscription = useCallback(async (targetPage = 1) => {
     setLoading(true)
     setErrorMsg('')
     try {
-      const res = await apiClient.get<IJobsResponse>('/company/jobs', {
-        params: { page: targetPage, limit: 10 },
-      })
-      if (res.success && res.data) {
-        setJobs(res.data.jobs || [])
-        if (res.data.pagination) {
-          setPagination(res.data.pagination)
-          setPage(res.data.pagination.page)
+      const [jobsRes, subRes] = await Promise.allSettled([
+        apiClient.get<IJobsResponse>('/company/jobs', {
+          params: { page: targetPage, limit: 10 },
+        }),
+        apiClient.get<ISubscriptionStatusResponse>('/company/jobs/subscription/status'),
+      ])
+
+      if (jobsRes.status === 'fulfilled' && jobsRes.value.success && jobsRes.value.data) {
+        setJobs(jobsRes.value.data.jobs || [])
+        if (jobsRes.value.data.pagination) {
+          setPagination(jobsRes.value.data.pagination)
+          setPage(jobsRes.value.data.pagination.page)
         }
+      }
+
+      if (subRes.status === 'fulfilled' && subRes.value.success && subRes.value.data) {
+        setIsSubscribed(subRes.value.data.subscriptionStatus === 'PAID')
       }
     } catch (err: any) {
       setErrorMsg(err.message || 'Failed to fetch company jobs.')
@@ -51,32 +58,27 @@ export default function CompanyJobsPage() {
   }, [])
 
   useEffect(() => {
-    fetchJobs(1)
-  }, [fetchJobs])
+    fetchJobsAndSubscription(1)
+  }, [fetchJobsAndSubscription])
 
   const filteredJobs = jobs.filter((job) => {
     if (filterStatus === 'ALL') return true
     return job.status === filterStatus
   })
 
-  // ================= PUBLISH & STRIPE CHECKOUT FLOW =================
-  const handleInitiatePayment = async (jobId: string) => {
-    setActionLoadingId(jobId)
+  // ================= SUBSCRIPTION & PUBLISH FLOW =================
+  const handleInitiateSubscription = async (jobId?: string) => {
+    if (jobId) setActionLoadingId(jobId)
     setErrorMsg('')
     setSuccessMsg('')
     try {
-      const res = await apiClient.post<ICheckoutResponse>(`/company/jobs/${jobId}/checkout`)
+      const res = await apiClient.post<ICheckoutResponse>('/company/jobs/subscription/checkout')
       if (res.success && res.data?.checkoutUrl) {
-        // Redirect to Stripe checkout
         window.location.href = res.data.checkoutUrl
       }
     } catch (err: any) {
-      if (err instanceof ApiError && err.statusCode === 409) {
-        setErrorMsg('A checkout session is already pending for this job. Check payment status or retry in a moment.')
-      } else {
-        setErrorMsg(err.message || 'Failed to initialize payment checkout.')
-      }
-      setActionLoadingId(null)
+      setErrorMsg(err.message || 'Failed to initialize membership checkout.')
+      if (jobId) setActionLoadingId(null)
     }
   }
 
@@ -88,10 +90,14 @@ export default function CompanyJobsPage() {
       const res = await apiClient.patch<IJob>(`/company/jobs/${jobId}/publish`)
       if (res.success) {
         setSuccessMsg('Job successfully published to the live marketplace!')
-        await fetchJobs(page)
+        await fetchJobsAndSubscription(page)
       }
     } catch (err: any) {
-      setErrorMsg(err.message || 'Cannot publish unpaid or ineligible job.')
+      if (err instanceof ApiError && err.statusCode === 400 && !isSubscribed) {
+        setErrorMsg('Company membership is required to publish jobs. Click below to activate your $10 one-time membership.')
+      } else {
+        setErrorMsg(err.message || 'Failed to publish job.')
+      }
     } finally {
       setActionLoadingId(null)
     }
@@ -108,7 +114,7 @@ export default function CompanyJobsPage() {
       const res = await apiClient.patch<IJob>(`/company/jobs/${jobId}/close`)
       if (res.success) {
         setSuccessMsg('Job posting closed.')
-        await fetchJobs(page)
+        await fetchJobsAndSubscription(page)
       }
     } catch (err: any) {
       setErrorMsg(err.message || 'Failed to close job.')
@@ -128,7 +134,7 @@ export default function CompanyJobsPage() {
       const res = await apiClient.delete(`/company/jobs/${jobId}`)
       if (res.success) {
         setSuccessMsg('Draft job deleted.')
-        await fetchJobs(page)
+        await fetchJobsAndSubscription(page)
       }
     } catch (err: any) {
       setErrorMsg(err.message || 'Only draft jobs can be deleted.')
@@ -142,17 +148,35 @@ export default function CompanyJobsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Manage Job Postings</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-slate-900">Manage Job Postings</h1>
+            {isSubscribed && (
+              <span className="text-xs font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-0.5 rounded-full">
+                Unlimited Plan Active
+              </span>
+            )}
+          </div>
           <p className="text-sm text-slate-500 mt-1">
             Track active openings, review applicant pipelines, and manage publication states.
           </p>
         </div>
-        <Link
-          href="/company/jobs/new"
-          className="inline-flex items-center justify-center px-4 py-2.5 bg-[#146BFF] hover:bg-[#0E5CE8] text-white text-sm font-semibold rounded-xl shadow-sm shadow-blue-500/20 transition cursor-pointer"
-        >
-          + Post a New Job
-        </Link>
+        <div className="flex items-center gap-3">
+          {!isSubscribed && (
+            <button
+              type="button"
+              onClick={() => handleInitiateSubscription()}
+              className="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white text-xs sm:text-sm font-bold rounded-xl shadow-xs transition cursor-pointer"
+            >
+              Activate Unlimited Plan ($10)
+            </button>
+          )}
+          <Link
+            href="/company/jobs/new"
+            className="inline-flex items-center justify-center px-4 py-2.5 bg-[#146BFF] hover:bg-[#0E5CE8] text-white text-sm font-semibold rounded-xl shadow-sm shadow-blue-500/20 transition cursor-pointer"
+          >
+            + Post a New Job
+          </Link>
+        </div>
       </div>
 
       {/* Alerts */}
@@ -166,11 +190,21 @@ export default function CompanyJobsPage() {
       )}
 
       {errorMsg && (
-        <div className="bg-red-50 border border-red-200 p-4 rounded-xl text-sm text-red-800 flex items-center gap-2.5 animate-fadeIn">
-          <svg className="w-5 h-5 text-red-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <span>{errorMsg}</span>
+        <div className="bg-red-50 border border-red-200 p-4 rounded-xl text-sm text-red-800 flex items-center justify-between gap-3 animate-fadeIn">
+          <div className="flex items-center gap-2.5">
+            <svg className="w-5 h-5 text-red-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>{errorMsg}</span>
+          </div>
+          {!isSubscribed && (
+            <button
+              onClick={() => handleInitiateSubscription()}
+              className="px-3 py-1 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-lg shrink-0 cursor-pointer"
+            >
+              Pay $10 Now →
+            </button>
+          )}
         </div>
       )}
 
@@ -212,7 +246,7 @@ export default function CompanyJobsPage() {
             </div>
             <h3 className="text-base font-bold text-slate-900">No job postings found</h3>
             <p className="text-xs text-slate-500 max-w-sm mx-auto">
-              Create your first opening to attract high-caliber engineering and product candidates.
+              Create your opening to attract high-caliber engineering and product candidates.
             </p>
             <div className="pt-2">
               <Link
@@ -229,7 +263,6 @@ export default function CompanyJobsPage() {
               const isActionLoading = actionLoadingId === job._id
               const isDraft = job.status === EJobStatus.DRAFT
               const isPublished = job.status === EJobStatus.PUBLISHED
-              const isPaid = job.paymentStatus === EPaymentStatus.PAID
 
               return (
                 <div
@@ -245,16 +278,16 @@ export default function CompanyJobsPage() {
                       </Link>
                       <StatusBadge status={job.status} />
 
-                      {/* Payment Status Pill */}
+                      {/* Draft Readiness Pill */}
                       {isDraft && (
                         <span
                           className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${
-                            isPaid
+                            isSubscribed
                               ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                               : 'bg-amber-50 text-amber-700 border-amber-200'
                           }`}
                         >
-                          {isPaid ? 'Fee Paid ✓' : 'Posting Fee Unpaid ($10)'}
+                          {isSubscribed ? 'Ready to Publish ✓' : 'Requires $10 Membership'}
                         </span>
                       )}
                     </div>
@@ -288,7 +321,7 @@ export default function CompanyJobsPage() {
                       Details
                     </Link>
 
-                    {/* Edit (allowed for draft and published) */}
+                    {/* Edit */}
                     {job.status !== EJobStatus.CLOSED && (
                       <Link
                         href={`/company/jobs/${job._id}/edit`}
@@ -298,19 +331,8 @@ export default function CompanyJobsPage() {
                       </Link>
                     )}
 
-                    {/* Publish Flow Actions */}
-                    {isDraft && !isPaid && (
-                      <button
-                        type="button"
-                        onClick={() => handleInitiatePayment(job._id)}
-                        disabled={isActionLoading}
-                        className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold rounded-xl shadow-xs transition disabled:opacity-50 cursor-pointer"
-                      >
-                        {isActionLoading ? 'Processing...' : 'Pay Fee ($10) →'}
-                      </button>
-                    )}
-
-                    {isDraft && isPaid && (
+                    {/* Publish Actions */}
+                    {isDraft && isSubscribed && (
                       <button
                         type="button"
                         onClick={() => handlePublishJob(job._id)}
@@ -318,6 +340,17 @@ export default function CompanyJobsPage() {
                         className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-xl shadow-xs transition disabled:opacity-50 cursor-pointer"
                       >
                         {isActionLoading ? 'Publishing...' : 'Publish Job ✓'}
+                      </button>
+                    )}
+
+                    {isDraft && !isSubscribed && (
+                      <button
+                        type="button"
+                        onClick={() => handleInitiateSubscription(job._id)}
+                        disabled={isActionLoading}
+                        className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold rounded-xl shadow-xs transition disabled:opacity-50 cursor-pointer"
+                      >
+                        {isActionLoading ? 'Processing...' : 'Unlock ($10) & Publish'}
                       </button>
                     )}
 
@@ -333,7 +366,7 @@ export default function CompanyJobsPage() {
                       </button>
                     )}
 
-                    {/* Delete Job (strictly allowed only for DRAFT jobs per backend rule) */}
+                    {/* Delete Job (allowed for DRAFT jobs) */}
                     {isDraft && (
                       <button
                         type="button"
@@ -358,7 +391,7 @@ export default function CompanyJobsPage() {
         <div className="border-t border-slate-100 p-2">
           <Pagination
             pagination={pagination}
-            onPageChange={(newPage) => fetchJobs(newPage)}
+            onPageChange={(newPage) => fetchJobsAndSubscription(newPage)}
           />
         </div>
       </div>

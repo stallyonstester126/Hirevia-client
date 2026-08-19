@@ -7,10 +7,12 @@ import { apiClient } from '../../../lib/api-client'
 import LoadingSpinner from '../../../components/LoadingSpinner'
 
 interface IConfirmResult {
-  jobId: string
-  jobTitle: string
-  status: string
-  paymentStatus: string
+  type?: string
+  subscriptionStatus?: string
+  jobId?: string
+  jobTitle?: string
+  status?: string
+  paymentStatus?: string
 }
 
 function PaymentSuccessContent() {
@@ -18,7 +20,7 @@ function PaymentSuccessContent() {
   const sessionId = searchParams.get('session_id')
 
   const [confirming, setConfirming] = useState(true)
-  const [jobInfo, setJobInfo] = useState<IConfirmResult | null>(null)
+  const [resultInfo, setResultInfo] = useState<IConfirmResult | null>(null)
   const [publishing, setPublishing] = useState(false)
   const [isPublished, setIsPublished] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
@@ -38,13 +40,12 @@ function PaymentSuccessContent() {
         sessionId: sid,
       })
       if (res.success && res.data) {
-        setJobInfo(res.data)
+        setResultInfo(res.data)
         if (res.data.status === 'PUBLISHED') {
           setIsPublished(true)
         }
       }
     } catch (err: any) {
-      // If already processed or fallback
       setErrorMsg(err?.message || '')
     } finally {
       setConfirming(false)
@@ -52,10 +53,10 @@ function PaymentSuccessContent() {
   }
 
   const handlePublishNow = async () => {
-    if (!jobInfo?.jobId) return
+    if (!resultInfo?.jobId) return
     setPublishing(true)
     try {
-      const res = await apiClient.patch(`/company/jobs/${jobInfo.jobId}/publish`)
+      const res = await apiClient.patch(`/company/jobs/${resultInfo.jobId}/publish`)
       if (res.success) {
         setIsPublished(true)
       }
@@ -86,30 +87,30 @@ function PaymentSuccessContent() {
         {/* Title and Message */}
         <div className="space-y-2">
           <h1 className="text-2xl sm:text-[26px] font-extrabold text-slate-900 tracking-tight">
-            Payment Successful!
+            Membership Activated!
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 leading-relaxed max-w-xs mx-auto">
-            Your posting fee has been received and verified. Your job opening is ready for candidates.
+            Your $10 one-time membership has been verified. You now have unlimited job postings and candidate management.
           </p>
         </div>
 
         {/* Professional Summary Box */}
         <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200/80 text-left divide-y divide-slate-200/60 space-y-2.5">
           <div className="flex items-center justify-between text-xs pt-1">
-            <span className="text-slate-500 font-medium">Service</span>
-            <span className="font-bold text-slate-800">Job Posting Activation</span>
+            <span className="text-slate-500 font-medium">Plan Type</span>
+            <span className="font-bold text-slate-800">Employer Unlimited Membership</span>
           </div>
 
-          {jobInfo?.jobTitle && (
+          {resultInfo?.jobTitle && (
             <div className="flex items-center justify-between text-xs pt-2.5">
               <span className="text-slate-500 font-medium">Position</span>
-              <span className="font-bold text-slate-800 truncate max-w-[180px]">{jobInfo.jobTitle}</span>
+              <span className="font-bold text-slate-800 truncate max-w-[180px]">{resultInfo.jobTitle}</span>
             </div>
           )}
 
           <div className="flex items-center justify-between text-xs pt-2.5">
             <span className="text-slate-500 font-medium">Amount Paid</span>
-            <span className="font-extrabold text-slate-900">$10.00 USD</span>
+            <span className="font-extrabold text-slate-900">$10.00 USD (One-Time)</span>
           </div>
 
           <div className="flex items-center justify-between text-xs pt-2.5">
@@ -118,7 +119,7 @@ function PaymentSuccessContent() {
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
               </svg>
-              Confirmed & Paid
+              Active & Unlocked
             </span>
           </div>
         </div>
@@ -136,22 +137,22 @@ function PaymentSuccessContent() {
               <svg className="w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
               </svg>
-              Your job is now Live & Published!
+              Your opening is now Live & Published!
             </div>
-          ) : jobInfo?.jobId ? (
+          ) : resultInfo?.jobId ? (
             <button
               type="button"
               onClick={handlePublishNow}
               disabled={publishing || confirming}
               className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold rounded-2xl shadow-lg shadow-emerald-600/20 transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
             >
-              {publishing ? 'Publishing Live...' : 'Publish Job Live Now →'}
+              {publishing ? 'Publishing Live...' : 'Publish Opening Live Now →'}
             </button>
           ) : null}
 
-          {jobInfo?.jobId ? (
+          {resultInfo?.jobId ? (
             <Link
-              href={`/company/jobs/${jobInfo.jobId}`}
+              href={`/company/jobs/${resultInfo.jobId}`}
               className="block w-full py-3 bg-[#146BFF] hover:bg-[#0E5CE8] text-white text-xs sm:text-sm font-semibold rounded-2xl shadow-md shadow-blue-500/20 transition text-center"
             >
               Manage Job Posting →
