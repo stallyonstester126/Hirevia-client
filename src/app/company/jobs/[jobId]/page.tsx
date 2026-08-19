@@ -238,22 +238,21 @@ export default function CompanyJobDetailPage() {
               View Applicants Pipeline
             </Link>
 
-            {job.status !== EJobStatus.CLOSED && (
-              <Link
-                href={`/company/jobs/${job._id}/edit`}
-                className="px-3.5 py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-xl transition"
-              >
-                Edit
-              </Link>
-            )}
+            <Link
+              href={`/company/jobs/${job._id}/edit`}
+              className="px-3.5 py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-xl transition"
+            >
+              Edit
+            </Link>
 
-            {isDraft && (
+            {(isDraft || job.status === EJobStatus.CLOSED) && (
               <button
                 type="button"
                 onClick={handleDeleteJob}
                 disabled={actionLoading}
                 className="p-2.5 border border-rose-200 hover:bg-rose-50 text-rose-600 rounded-xl transition cursor-pointer"
-                aria-label="Delete draft job"
+                aria-label="Delete job"
+                title="Delete job"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -361,9 +360,32 @@ export default function CompanyJobDetailPage() {
 
         {/* State D: CLOSED */}
         {job.status === EJobStatus.CLOSED && (
-          <div className="p-5 bg-slate-100 rounded-2xl border border-slate-200 text-slate-600 text-xs space-y-1">
-            <span className="font-bold text-slate-800 uppercase tracking-wider block">Position Closed</span>
-            <p>This job posting is archived and no longer accepts new applicants.</p>
+          <div className="p-5 bg-slate-100 rounded-2xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <span className="font-bold text-slate-800 uppercase tracking-wider block text-xs">Position Closed</span>
+              <p className="text-xs text-slate-600">
+                This opening is archived and no longer accepts new applicants. You can re-publish it to resume hiring or delete it permanently.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={handlePublishJob}
+                disabled={actionLoading}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-xl shadow-xs transition disabled:opacity-50 cursor-pointer"
+              >
+                {actionLoading ? 'Re-opening...' : 'Re-publish Job Live →'}
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteJob}
+                disabled={actionLoading}
+                className="px-4 py-2 border border-rose-200 hover:bg-rose-50 text-rose-600 text-xs font-semibold rounded-xl transition disabled:opacity-50 cursor-pointer"
+              >
+                Delete Job
+              </button>
+            </div>
           </div>
         )}
       </div>

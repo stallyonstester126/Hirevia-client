@@ -98,8 +98,8 @@ describe('CompanyJobsPage Job Management & Subscription Flow', () => {
     // "Close Job" is present for published job
     expect(screen.getByRole('button', { name: /Close Job/i })).toBeInTheDocument()
 
-    // Delete buttons are present only for DRAFT jobs
-    const deleteButtons = screen.getAllByLabelText(/Delete draft job/i)
+    // Delete buttons are present for DRAFT and CLOSED jobs
+    const deleteButtons = screen.getAllByLabelText(/Delete job/i)
     expect(deleteButtons).toHaveLength(1)
   })
 

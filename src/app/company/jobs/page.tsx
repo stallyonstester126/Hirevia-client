@@ -322,16 +322,14 @@ export default function CompanyJobsPage() {
                     </Link>
 
                     {/* Edit */}
-                    {job.status !== EJobStatus.CLOSED && (
-                      <Link
-                        href={`/company/jobs/${job._id}/edit`}
-                        className="px-3 py-1.5 border border-slate-200 hover:bg-slate-100 text-slate-700 text-xs font-semibold rounded-xl transition"
-                      >
-                        Edit
-                      </Link>
-                    )}
+                    <Link
+                      href={`/company/jobs/${job._id}/edit`}
+                      className="px-3 py-1.5 border border-slate-200 hover:bg-slate-100 text-slate-700 text-xs font-semibold rounded-xl transition"
+                    >
+                      Edit
+                    </Link>
 
-                    {/* Publish Actions */}
+                    {/* Publish Actions (Draft) */}
                     {isDraft && isSubscribed && (
                       <button
                         type="button"
@@ -354,6 +352,18 @@ export default function CompanyJobsPage() {
                       </button>
                     )}
 
+                    {/* Re-publish Action (Closed) */}
+                    {job.status === EJobStatus.CLOSED && (
+                      <button
+                        type="button"
+                        onClick={() => handlePublishJob(job._id)}
+                        disabled={isActionLoading}
+                        className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-xl shadow-xs transition disabled:opacity-50 cursor-pointer"
+                      >
+                        {isActionLoading ? 'Re-opening...' : 'Re-publish Job'}
+                      </button>
+                    )}
+
                     {/* Close Job (for published jobs) */}
                     {isPublished && (
                       <button
@@ -366,14 +376,15 @@ export default function CompanyJobsPage() {
                       </button>
                     )}
 
-                    {/* Delete Job (allowed for DRAFT jobs) */}
-                    {isDraft && (
+                    {/* Delete Job (allowed for DRAFT and CLOSED jobs) */}
+                    {(isDraft || job.status === EJobStatus.CLOSED) && (
                       <button
                         type="button"
                         onClick={() => handleDeleteJob(job._id)}
                         disabled={isActionLoading}
                         className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition disabled:opacity-50 cursor-pointer"
-                        aria-label="Delete draft job"
+                        aria-label="Delete job"
+                        title="Delete job"
                       >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
