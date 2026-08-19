@@ -8,6 +8,7 @@ import { IJob, IJobsResponse, EJobStatus, ICompanyProfile, ISubscriptionStatusRe
 import StatusBadge from '../../components/StatusBadge'
 import LoadingSpinner from '../../components/LoadingSpinner'
 import CompanyProfileModal from '../../components/CompanyProfileModal'
+import MembershipModal from '../../components/MembershipModal'
 
 export default function CompanyDashboard() {
   const { user } = useAuth()
@@ -15,6 +16,7 @@ export default function CompanyDashboard() {
   const [hasProfile, setHasProfile] = useState(false)
   const [profileData, setProfileData] = useState<ICompanyProfile | null>(null)
   const [showProfileModal, setShowProfileModal] = useState(false)
+  const [showMembershipModal, setShowMembershipModal] = useState(false)
   const [profileSavedMsg, setProfileSavedMsg] = useState('')
   const [isSubscribed, setIsSubscribed] = useState(false)
   const [isCheckingOut, setIsCheckingOut] = useState(false)
@@ -101,6 +103,12 @@ export default function CompanyDashboard() {
         onSaved={handleProfileSaved}
         initialProfile={profileData}
         profileExists={!!profileData?._id}
+      />
+
+      {/* Membership Required Popup Modal */}
+      <MembershipModal
+        isOpen={showMembershipModal}
+        onClose={() => setShowMembershipModal(false)}
       />
 
       {/* Success Notification */}
@@ -208,12 +216,22 @@ export default function CompanyDashboard() {
         </div>
 
         <div className="flex items-center gap-3 relative z-10 shrink-0">
-          <Link
-            href="/company/jobs/new"
-            className="px-5 py-2.5 bg-[#146BFF] hover:bg-[#0E5CE8] text-white text-xs sm:text-sm font-bold rounded-xl shadow-xs transition shadow-blue-500/20"
-          >
-            + Post a New Job
-          </Link>
+          {isSubscribed ? (
+            <Link
+              href="/company/jobs/new"
+              className="px-5 py-2.5 bg-[#146BFF] hover:bg-[#0E5CE8] text-white text-xs sm:text-sm font-bold rounded-xl shadow-xs transition shadow-blue-500/20"
+            >
+              + Post a New Job
+            </Link>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowMembershipModal(true)}
+              className="px-5 py-2.5 bg-[#146BFF] hover:bg-[#0E5CE8] text-white text-xs sm:text-sm font-bold rounded-xl shadow-xs transition shadow-blue-500/20 cursor-pointer"
+            >
+              + Post a New Job
+            </button>
+          )}
           <Link
             href="/company/profile"
             className="px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white text-xs sm:text-sm font-semibold rounded-xl border border-white/20 transition"
@@ -301,12 +319,22 @@ export default function CompanyDashboard() {
         {jobs.length === 0 ? (
           <div className="bg-white p-12 rounded-2xl border border-slate-200/80 text-center space-y-3">
             <p className="text-sm text-slate-500">You haven&apos;t created any job openings yet.</p>
-            <Link
-              href="/company/jobs/new"
-              className="inline-flex items-center px-4 py-2 bg-[#146BFF] text-white text-xs font-semibold rounded-xl shadow-xs"
-            >
-              + Create Your First Job
-            </Link>
+            {isSubscribed ? (
+              <Link
+                href="/company/jobs/new"
+                className="inline-flex items-center px-4 py-2 bg-[#146BFF] text-white text-xs font-semibold rounded-xl shadow-xs"
+              >
+                + Create Your First Job
+              </Link>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowMembershipModal(true)}
+                className="inline-flex items-center px-4 py-2 bg-[#146BFF] text-white text-xs font-semibold rounded-xl shadow-xs cursor-pointer"
+              >
+                + Create Your First Job
+              </button>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

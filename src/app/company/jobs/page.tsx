@@ -7,11 +7,13 @@ import { IJob, IJobsResponse, EJobStatus, ICheckoutResponse, ISubscriptionStatus
 import StatusBadge from '../../../components/StatusBadge'
 import Pagination from '../../../components/Pagination'
 import LoadingSpinner from '../../../components/LoadingSpinner'
+import MembershipModal from '../../../components/MembershipModal'
 
 export default function CompanyJobsPage() {
   const [jobs, setJobs] = useState<IJob[]>([])
   const [loading, setLoading] = useState(true)
   const [isSubscribed, setIsSubscribed] = useState(false)
+  const [showMembershipModal, setShowMembershipModal] = useState(false)
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null)
   const [filterStatus, setFilterStatus] = useState<string>('ALL')
 
@@ -164,20 +166,36 @@ export default function CompanyJobsPage() {
           {!isSubscribed && (
             <button
               type="button"
-              onClick={() => handleInitiateSubscription()}
+              onClick={() => setShowMembershipModal(true)}
               className="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white text-xs sm:text-sm font-bold rounded-xl shadow-xs transition cursor-pointer"
             >
               Activate Unlimited Plan ($10)
             </button>
           )}
-          <Link
-            href="/company/jobs/new"
-            className="inline-flex items-center justify-center px-4 py-2.5 bg-[#146BFF] hover:bg-[#0E5CE8] text-white text-sm font-semibold rounded-xl shadow-sm shadow-blue-500/20 transition cursor-pointer"
-          >
-            + Post a New Job
-          </Link>
+          {isSubscribed ? (
+            <Link
+              href="/company/jobs/new"
+              className="inline-flex items-center justify-center px-4 py-2.5 bg-[#146BFF] hover:bg-[#0E5CE8] text-white text-sm font-semibold rounded-xl shadow-sm shadow-blue-500/20 transition cursor-pointer"
+            >
+              + Post a New Job
+            </Link>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowMembershipModal(true)}
+              className="inline-flex items-center justify-center px-4 py-2.5 bg-[#146BFF] hover:bg-[#0E5CE8] text-white text-sm font-semibold rounded-xl shadow-sm shadow-blue-500/20 transition cursor-pointer"
+            >
+              + Post a New Job
+            </button>
+          )}
         </div>
       </div>
+
+      {/* Membership Required Popup Modal */}
+      <MembershipModal
+        isOpen={showMembershipModal}
+        onClose={() => setShowMembershipModal(false)}
+      />
 
       {/* Alerts */}
       {successMsg && (
@@ -344,11 +362,11 @@ export default function CompanyJobsPage() {
                     {isDraft && !isSubscribed && (
                       <button
                         type="button"
-                        onClick={() => handleInitiateSubscription(job._id)}
+                        onClick={() => setShowMembershipModal(true)}
                         disabled={isActionLoading}
                         className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold rounded-xl shadow-xs transition disabled:opacity-50 cursor-pointer"
                       >
-                        {isActionLoading ? 'Processing...' : 'Unlock ($10) & Publish'}
+                        Publish Job →
                       </button>
                     )}
 

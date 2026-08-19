@@ -137,8 +137,11 @@ describe('CompanyJobsPage Job Management & Subscription Flow', () => {
     render(<CompanyJobsPage />)
     await screen.findByText('Draft Engineering Job')
 
-    const payButton = screen.getByRole('button', { name: /Unlock \(\$10\) & Publish/i })
+    const payButton = screen.getByRole('button', { name: /Publish Job →/i })
     fireEvent.click(payButton)
+
+    const buyMembershipBtn = await screen.findByRole('button', { name: /Buy Membership \(\$10 One-Time\)/i })
+    fireEvent.click(buyMembershipBtn)
 
     await waitFor(() => {
       expect(apiClient.post).toHaveBeenCalledWith('/company/jobs/subscription/checkout')

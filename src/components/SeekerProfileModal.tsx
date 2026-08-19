@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { apiClient } from '../lib/api-client'
 import { ISeekerProfile } from '../types'
 import TagInput from './TagInput'
@@ -20,6 +21,7 @@ export default function SeekerProfileModal({
   initialProfile,
   profileExists = false,
 }: SeekerProfileModalProps) {
+  const [mounted, setMounted] = useState(false)
   const [headline, setHeadline] = useState(initialProfile?.headline || '')
   const [location, setLocation] = useState(initialProfile?.location || '')
   const [bio, setBio] = useState(initialProfile?.bio || '')
@@ -27,6 +29,10 @@ export default function SeekerProfileModal({
 
   const [isSaving, setIsSaving] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   // Lock background body scroll when modal is open to ensure 100% full-screen blur coverage
   useEffect(() => {
@@ -39,7 +45,7 @@ export default function SeekerProfileModal({
     }
   }, [isOpen])
 
-  if (!isOpen) return null
+  if (!isOpen || !mounted) return null
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -74,9 +80,20 @@ export default function SeekerProfileModal({
     }
   }
 
-  return (
-    <div className="fixed inset-0 top-0 left-0 right-0 bottom-0 w-screen h-screen z-[9999] flex items-center justify-center p-3 sm:p-4 md:p-6 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
-      <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] sm:max-h-[85vh] flex flex-col shadow-2xl border border-slate-200/80 overflow-hidden relative text-left">
+  return createPortal(
+    <div className="fixed inset-0 top-0 left-0 right-0 bottom-0 w-screen h-screen z-[99998] flex items-center justify-center p-3 sm:p-4 md:p-6 animate-fadeIn">
+      {/* Dedicated Backdrop Layer with guaranteed full-screen blur */}
+      <div
+        className="fixed inset-0 bg-slate-950/75 transition-opacity"
+        style={{
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+        }}
+        onClick={onClose}
+      />
+
+      {/* Sharp Foreground Modal Card */}
+      <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] sm:max-h-[85vh] flex flex-col shadow-2xl border border-slate-200/80 overflow-hidden relative z-10 text-left">
         {/* Pinned Header */}
         <div className="p-5 sm:p-6 sm:pb-4 shrink-0 flex items-start justify-between gap-4 border-b border-slate-100 relative bg-white">
           <div className="flex items-start gap-3.5">
@@ -214,6 +231,7 @@ export default function SeekerProfileModal({
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
