@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { apiClient, ApiError } from '../../../lib/api-client'
 import { IResume, ICVAnalysis } from '../../../types'
 import LoadingSpinner from '../../../components/LoadingSpinner'
+import ConfirmationModal from '../../../components/ConfirmationModal'
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
 const ALLOWED_EXTENSIONS = ['.pdf', '.doc', '.docx']
@@ -19,6 +20,23 @@ export default function SeekerResumesPage() {
   const [analyzingResumeId, setAnalyzingResumeId] = useState<string | null>(null)
   const [analysisModalOpen, setAnalysisModalOpen] = useState(false)
   const [analysisLoading, setAnalysisLoading] = useState(false)
+
+  // Custom Confirmation Dialog State
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean
+    title: string
+    message: string
+    confirmText?: string
+    variant?: 'danger' | 'warning' | 'primary'
+    onConfirm: () => void
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    confirmText: 'Confirm',
+    variant: 'danger',
+    onConfirm: () => {},
+  })
 
   // Feedback states
   const [errorMsg, setErrorMsg] = useState('')
@@ -104,24 +122,30 @@ export default function SeekerResumesPage() {
     }
   }
 
-  const handleDelete = async (resume: IResume) => {
-    if (!confirm(`Are you sure you want to delete "${resume.originalFileName}" (Version ${resume.version})?`)) {
-      return
-    }
-
-    setErrorMsg('')
-    setSuccessMsg('')
-    try {
-      await apiClient.delete(`/seeker/resumes/${resume._id}`)
-      setSuccessMsg('Resume version removed.')
-      await fetchResumes()
-    } catch (err: any) {
-      if (err instanceof ApiError && err.statusCode === 409) {
-        setErrorMsg('Deletion blocked: This resume is referenced by an active job application.')
-      } else {
-        setErrorMsg(err.message || 'Failed to delete resume.')
-      }
-    }
+  const handleDelete = (resume: IResume) => {
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Delete Resume Version?',
+      message: `Are you sure you want to delete "${resume.originalFileName}" (Version ${resume.version})? This action cannot be undone.`,
+      confirmText: 'Delete Resume',
+      variant: 'danger',
+      onConfirm: async () => {
+        setConfirmConfig((prev) => ({ ...prev, isOpen: false }))
+        setErrorMsg('')
+        setSuccessMsg('')
+        try {
+          await apiClient.delete(`/seeker/resumes/${resume._id}`)
+          setSuccessMsg('Resume version removed.')
+          await fetchResumes()
+        } catch (err: any) {
+          if (err instanceof ApiError && err.statusCode === 409) {
+            setErrorMsg('Deletion blocked: This resume is referenced by an active job application.')
+          } else {
+            setErrorMsg(err.message || 'Failed to delete resume.')
+          }
+        }
+      },
+    })
   }
 
   const handleAnalyzeResume = async (resumeId: string, force = false) => {
@@ -168,6 +192,17 @@ export default function SeekerResumesPage() {
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
+      {/* Custom Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={confirmConfig.isOpen}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        confirmText={confirmConfig.confirmText}
+        variant={confirmConfig.variant}
+        onConfirm={confirmConfig.onConfirm}
+        onCancel={() => setConfirmConfig((prev) => ({ ...prev, isOpen: false }))}
+      />
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs">
         <div>

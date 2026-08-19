@@ -7,6 +7,7 @@ import { apiClient, ApiError } from '../../../../lib/api-client'
 import { IApplication, EApplicationStatus } from '../../../../types'
 import StatusBadge from '../../../../components/StatusBadge'
 import LoadingSpinner from '../../../../components/LoadingSpinner'
+import ConfirmationModal from '../../../../components/ConfirmationModal'
 
 export default function ApplicationDetailPage() {
   const params = useParams()
@@ -18,6 +19,23 @@ export default function ApplicationDetailPage() {
   const [isWithdrawing, setIsWithdrawing] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
+
+  // Custom Confirmation Dialog State
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean
+    title: string
+    message: string
+    confirmText?: string
+    variant?: 'danger' | 'warning' | 'primary'
+    onConfirm: () => void
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    confirmText: 'Confirm',
+    variant: 'danger',
+    onConfirm: () => {},
+  })
 
   useEffect(() => {
     if (applicationId) {
@@ -50,30 +68,36 @@ export default function ApplicationDetailPage() {
     return !unwithdrawable.includes(status)
   }
 
-  const handleWithdraw = async () => {
-    if (!confirm('Are you sure you want to withdraw this application? This action cannot be undone.')) {
-      return
-    }
+  const handleWithdraw = () => {
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Withdraw Application?',
+      message: 'Are you sure you want to withdraw this application? This action cannot be undone and you will no longer be considered for this position.',
+      confirmText: 'Withdraw Application',
+      variant: 'danger',
+      onConfirm: async () => {
+        setConfirmConfig((prev) => ({ ...prev, isOpen: false }))
+        setIsWithdrawing(true)
+        setErrorMsg('')
+        setSuccessMsg('')
 
-    setIsWithdrawing(true)
-    setErrorMsg('')
-    setSuccessMsg('')
-
-    try {
-      const res = await apiClient.patch<IApplication>(`/seeker/applications/${applicationId}/withdraw`)
-      if (res.success) {
-        setSuccessMsg('Application has been withdrawn successfully.')
-        await fetchApplication()
-      }
-    } catch (err: any) {
-      if (err instanceof ApiError) {
-        setErrorMsg(err.message)
-      } else {
-        setErrorMsg('Failed to withdraw application.')
-      }
-    } finally {
-      setIsWithdrawing(false)
-    }
+        try {
+          const res = await apiClient.patch<IApplication>(`/seeker/applications/${applicationId}/withdraw`)
+          if (res.success) {
+            setSuccessMsg('Application has been withdrawn successfully.')
+            await fetchApplication()
+          }
+        } catch (err: any) {
+          if (err instanceof ApiError) {
+            setErrorMsg(err.message)
+          } else {
+            setErrorMsg('Failed to withdraw application.')
+          }
+        } finally {
+          setIsWithdrawing(false)
+        }
+      },
+    })
   }
 
   const handleDownloadResume = async (resumeId: string, filename: string) => {
@@ -117,6 +141,17 @@ export default function ApplicationDetailPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
+      {/* Custom Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={confirmConfig.isOpen}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        confirmText={confirmConfig.confirmText}
+        variant={confirmConfig.variant}
+        onConfirm={confirmConfig.onConfirm}
+        onCancel={() => setConfirmConfig((prev) => ({ ...prev, isOpen: false }))}
+      />
+
       {/* Back button */}
       <div>
         <Link

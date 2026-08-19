@@ -156,6 +156,9 @@ describe('SeekerResumesPage Component', () => {
     const deleteButtons = screen.getAllByLabelText(/Delete resume/i)
     fireEvent.click(deleteButtons[0])
 
+    const confirmBtn = await screen.findByTestId('modal-confirm-button')
+    fireEvent.click(confirmBtn)
+
     expect(
       await screen.findByText(/Deletion blocked: This resume is referenced by an active job application/i)
     ).toBeInTheDocument()

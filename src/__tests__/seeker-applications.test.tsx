@@ -100,6 +100,9 @@ describe('SeekerApplicationsPage Status & Withdrawal', () => {
     const withdrawButtons = screen.getAllByRole('button', { name: /Withdraw/i })
     fireEvent.click(withdrawButtons[0])
 
+    const confirmBtn = await screen.findByRole('button', { name: /Withdraw Application/i })
+    fireEvent.click(confirmBtn)
+
     await waitFor(() => {
       expect(apiClient.patch).toHaveBeenCalledWith('/seeker/applications/app-submitted/withdraw')
     })

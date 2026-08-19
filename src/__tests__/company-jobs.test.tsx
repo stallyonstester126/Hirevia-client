@@ -170,4 +170,56 @@ describe('CompanyJobsPage Job Management & Subscription Flow', () => {
 
     expect(await screen.findByText(/Job successfully published/i)).toBeInTheDocument()
   })
+
+  it('closes job successfully after confirming with custom ConfirmationModal', async () => {
+    vi.mocked(apiClient.patch).mockResolvedValue({
+      success: true,
+      statusCode: 200,
+      message: 'Success',
+      data: { ...mockJobs[1], status: EJobStatus.CLOSED },
+    })
+
+    render(<CompanyJobsPage />)
+    await screen.findByText('Live Published Job')
+
+    const closeBtn = screen.getByRole('button', { name: /Close Job/i })
+    fireEvent.click(closeBtn)
+
+    // Confirmation modal appears
+    expect(await screen.findByText('Close Job Posting?')).toBeInTheDocument()
+
+    // Confirm close in modal
+    const modalConfirmBtn = screen.getByTestId('modal-confirm-button')
+    fireEvent.click(modalConfirmBtn)
+
+    await waitFor(() => {
+      expect(apiClient.patch).toHaveBeenCalledWith('/company/jobs/job-published/close')
+    })
+  })
+
+  it('deletes draft job successfully after confirming with custom ConfirmationModal', async () => {
+    vi.mocked(apiClient.delete).mockResolvedValue({
+      success: true,
+      statusCode: 200,
+      message: 'Success',
+      data: null,
+    })
+
+    render(<CompanyJobsPage />)
+    await screen.findByText('Draft Engineering Job')
+
+    const deleteBtn = screen.getByLabelText(/Delete job/i)
+    fireEvent.click(deleteBtn)
+
+    // Confirmation modal appears
+    expect(await screen.findByText('Delete Draft Job?')).toBeInTheDocument()
+
+    // Confirm delete in modal
+    const modalDeleteBtn = screen.getByTestId('modal-confirm-button')
+    fireEvent.click(modalDeleteBtn)
+
+    await waitFor(() => {
+      expect(apiClient.delete).toHaveBeenCalledWith('/company/jobs/job-draft-1')
+    })
+  })
 })

@@ -96,7 +96,7 @@ export default function JobApplicantsPage() {
     try {
       await apiClient.download(`/company/applications/${applicationId}/resume`, filename)
     } catch (err: any) {
-      alert(err.message || 'Failed to download candidate resume.')
+      setErrorMsg(err.message || 'Failed to download candidate resume.')
     }
   }
 

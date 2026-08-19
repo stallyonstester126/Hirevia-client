@@ -40,6 +40,10 @@ export default function SeekerProfilePage() {
   const [showEduModal, setShowEduModal] = useState(false)
   const [eduEditIndex, setEduEditIndex] = useState<number | null>(null)
 
+  // Modal feedback alerts
+  const [expModalError, setExpModalError] = useState('')
+  const [eduModalError, setEduModalError] = useState('')
+
   // Feedback alerts
   const [errorMsg, setErrorMsg] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
@@ -128,32 +132,36 @@ export default function SeekerProfilePage() {
     })
     setIsCurrentExp(false)
     setExpEditIndex(null)
+    setExpModalError('')
     setShowExpModal(true)
   }
 
   const openEditExp = (idx: number) => {
     const item = experience[idx]
     setNewExp({
-      ...item,
+      company: item.company,
+      position: item.position,
       startDate: item.startDate ? item.startDate.split('T')[0] : '',
       endDate: item.endDate ? item.endDate.split('T')[0] : null,
+      description: item.description || '',
     })
     setIsCurrentExp(!item.endDate)
     setExpEditIndex(idx)
+    setExpModalError('')
     setShowExpModal(true)
   }
 
   const saveExpModal = () => {
     if (!newExp.company.trim() || newExp.company.trim().length < 2) {
-      alert('Company name must be at least 2 characters.')
+      setExpModalError('Company name must be at least 2 characters.')
       return
     }
     if (!newExp.position.trim() || newExp.position.trim().length < 2) {
-      alert('Position title must be at least 2 characters.')
+      setExpModalError('Position title must be at least 2 characters.')
       return
     }
     if (!newExp.startDate) {
-      alert('Start date is required.')
+      setExpModalError('Start date is required.')
       return
     }
 
@@ -169,6 +177,7 @@ export default function SeekerProfilePage() {
     } else {
       setExperience([...experience, expToSave])
     }
+    setExpModalError('')
     setShowExpModal(false)
   }
 
@@ -185,31 +194,34 @@ export default function SeekerProfilePage() {
       endDate: null,
     })
     setEduEditIndex(null)
+    setEduModalError('')
     setShowEduModal(true)
   }
 
   const openEditEdu = (idx: number) => {
     const item = education[idx]
     setNewEdu({
-      ...item,
+      institution: item.institution,
+      degree: item.degree,
       startDate: item.startDate ? item.startDate.split('T')[0] : '',
       endDate: item.endDate ? item.endDate.split('T')[0] : null,
     })
     setEduEditIndex(idx)
+    setEduModalError('')
     setShowEduModal(true)
   }
 
   const saveEduModal = () => {
     if (!newEdu.institution.trim() || newEdu.institution.trim().length < 2) {
-      alert('Institution must be at least 2 characters.')
+      setEduModalError('Institution must be at least 2 characters.')
       return
     }
     if (!newEdu.degree.trim() || newEdu.degree.trim().length < 2) {
-      alert('Degree / Field of study must be at least 2 characters.')
+      setEduModalError('Degree / Field of study must be at least 2 characters.')
       return
     }
     if (!newEdu.startDate) {
-      alert('Start date is required.')
+      setEduModalError('Start date is required.')
       return
     }
 
@@ -220,6 +232,7 @@ export default function SeekerProfilePage() {
     } else {
       setEducation([...education, newEdu])
     }
+    setEduModalError('')
     setShowEduModal(false)
   }
 
@@ -506,6 +519,15 @@ export default function SeekerProfilePage() {
               </button>
             </div>
 
+            {expModalError && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 flex items-center gap-2">
+                <svg className="w-4 h-4 text-red-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>{expModalError}</span>
+              </div>
+            )}
+
             <div className="space-y-3">
               <div className="space-y-1">
                 <label className="block text-xs font-semibold text-slate-700">Company Name *</label>
@@ -613,6 +635,15 @@ export default function SeekerProfilePage() {
                 ✕
               </button>
             </div>
+
+            {eduModalError && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 flex items-center gap-2">
+                <svg className="w-4 h-4 text-red-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>{eduModalError}</span>
+              </div>
+            )}
 
             <div className="space-y-3">
               <div className="space-y-1">

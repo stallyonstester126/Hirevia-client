@@ -7,6 +7,8 @@ import { apiClient, ApiError } from '../../../../lib/api-client'
 import { IJob, EJobStatus, EPaymentStatus, ICheckoutResponse, ISubscriptionStatusResponse } from '../../../../types'
 import StatusBadge from '../../../../components/StatusBadge'
 import LoadingSpinner from '../../../../components/LoadingSpinner'
+import ConfirmationModal from '../../../../components/ConfirmationModal'
+import MembershipModal from '../../../../components/MembershipModal'
 
 export default function CompanyJobDetailPage() {
   const params = useParams()
@@ -15,8 +17,26 @@ export default function CompanyJobDetailPage() {
 
   const [job, setJob] = useState<IJob | null>(null)
   const [isSubscribed, setIsSubscribed] = useState(false)
+  const [showMembershipModal, setShowMembershipModal] = useState(false)
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState(false)
+
+  // Custom Confirmation Dialog State
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean
+    title: string
+    message: string
+    confirmText?: string
+    variant?: 'danger' | 'warning' | 'primary'
+    onConfirm: () => void
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    confirmText: 'Confirm',
+    variant: 'danger',
+    onConfirm: () => {},
+  })
 
   // Alerts
   const [errorMsg, setErrorMsg] = useState('')
@@ -85,41 +105,55 @@ export default function CompanyJobDetailPage() {
     }
   }
 
-  const handleCloseJob = async () => {
-    if (!confirm('Are you sure you want to close this job? Candidates will no longer be able to apply.')) {
-      return
-    }
-    setActionLoading(true)
-    setErrorMsg('')
-    setSuccessMsg('')
-    try {
-      const res = await apiClient.patch<IJob>(`/company/jobs/${jobId}/close`)
-      if (res.success && res.data) {
-        setJob(res.data)
-        setSuccessMsg('Job posting has been closed.')
-      }
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Failed to close job.')
-    } finally {
-      setActionLoading(false)
-    }
+  const handleCloseJob = () => {
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Close Job Posting?',
+      message: 'Are you sure you want to close this job? Candidates will no longer be able to submit applications.',
+      confirmText: 'Close Job',
+      variant: 'warning',
+      onConfirm: async () => {
+        setConfirmConfig((prev) => ({ ...prev, isOpen: false }))
+        setActionLoading(true)
+        setErrorMsg('')
+        setSuccessMsg('')
+        try {
+          const res = await apiClient.patch<IJob>(`/company/jobs/${jobId}/close`)
+          if (res.success && res.data) {
+            setJob(res.data)
+            setSuccessMsg('Job posting has been closed successfully.')
+          }
+        } catch (err: any) {
+          setErrorMsg(err.message || 'Failed to close job.')
+        } finally {
+          setActionLoading(false)
+        }
+      },
+    })
   }
 
-  const handleDeleteJob = async () => {
-    if (!confirm('Are you sure you want to delete this draft job? This cannot be undone.')) {
-      return
-    }
-    setActionLoading(true)
-    setErrorMsg('')
-    try {
-      const res = await apiClient.delete(`/company/jobs/${jobId}`)
-      if (res.success) {
-        router.push('/company/jobs')
-      }
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Only draft jobs can be deleted.')
-      setActionLoading(false)
-    }
+  const handleDeleteJob = () => {
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Delete Draft Job?',
+      message: 'Are you sure you want to delete this draft job? This action cannot be undone.',
+      confirmText: 'Delete Job',
+      variant: 'danger',
+      onConfirm: async () => {
+        setConfirmConfig((prev) => ({ ...prev, isOpen: false }))
+        setActionLoading(true)
+        setErrorMsg('')
+        try {
+          const res = await apiClient.delete(`/company/jobs/${jobId}`)
+          if (res.success) {
+            router.push('/company/jobs')
+          }
+        } catch (err: any) {
+          setErrorMsg(err.message || 'Only draft jobs can be deleted.')
+          setActionLoading(false)
+        }
+      },
+    })
   }
 
   if (loading) {
@@ -164,6 +198,23 @@ export default function CompanyJobDetailPage() {
           ← Back to All Postings
         </Link>
       </div>
+
+      {/* Custom Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={confirmConfig.isOpen}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        confirmText={confirmConfig.confirmText}
+        variant={confirmConfig.variant}
+        onConfirm={confirmConfig.onConfirm}
+        onCancel={() => setConfirmConfig((prev) => ({ ...prev, isOpen: false }))}
+      />
+
+      {/* Membership Required Modal */}
+      <MembershipModal
+        isOpen={showMembershipModal}
+        onClose={() => setShowMembershipModal(false)}
+      />
 
       {/* Alerts */}
       {successMsg && (

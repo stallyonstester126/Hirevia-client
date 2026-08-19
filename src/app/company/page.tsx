@@ -21,6 +21,7 @@ export default function CompanyDashboard() {
   const [isSubscribed, setIsSubscribed] = useState(false)
   const [isCheckingOut, setIsCheckingOut] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [errorMsg, setErrorMsg] = useState('')
 
   useEffect(() => {
     fetchDashboardData()
@@ -28,6 +29,7 @@ export default function CompanyDashboard() {
 
   const fetchDashboardData = async () => {
     setLoading(true)
+    setErrorMsg('')
     try {
       const [jobsRes, profileRes, subRes] = await Promise.allSettled([
         apiClient.get<IJobsResponse>('/company/jobs', { params: { limit: 6 } }),
@@ -35,29 +37,23 @@ export default function CompanyDashboard() {
         apiClient.get<ISubscriptionStatusResponse>('/company/jobs/subscription/status'),
       ])
 
-      if (jobsRes.status === 'fulfilled' && jobsRes.value.success) {
+      if (jobsRes.status === 'fulfilled' && jobsRes.value.success && jobsRes.value.data) {
         setJobs(jobsRes.value.data.jobs || [])
       }
 
       if (profileRes.status === 'fulfilled' && profileRes.value.success && profileRes.value.data) {
-        const prof = profileRes.value.data
-        setProfileData(prof)
-        if (prof.companyName && prof.companyName.trim().length > 0) {
-          setHasProfile(true)
-        } else {
-          setHasProfile(false)
-          setShowProfileModal(true)
-        }
+        setProfileData(profileRes.value.data)
+        setHasProfile(true)
       } else {
+        // If 404, profile does not exist yet (expected for new company)
         setHasProfile(false)
-        setShowProfileModal(true)
       }
 
-      if (subRes.status === 'fulfilled' && subRes.value.success) {
+      if (subRes.status === 'fulfilled' && subRes.value.success && subRes.value.data) {
         setIsSubscribed(subRes.value.data.subscriptionStatus === 'PAID')
       }
-    } catch {
-      // Ignored
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Failed to load dashboard data.')
     } finally {
       setLoading(false)
     }
@@ -65,13 +61,14 @@ export default function CompanyDashboard() {
 
   const handleSubscribe = async () => {
     setIsCheckingOut(true)
+    setErrorMsg('')
     try {
       const res = await apiClient.post<ICheckoutResponse>('/company/jobs/subscription/checkout')
       if (res.success && res.data?.checkoutUrl) {
         window.location.href = res.data.checkoutUrl
       }
     } catch (err: any) {
-      alert(err.message || 'Failed to start membership checkout. Please try again.')
+      setErrorMsg(err.message || 'Failed to start membership checkout. Please try again.')
       setIsCheckingOut(false)
     }
   }
@@ -125,6 +122,26 @@ export default function CompanyDashboard() {
           <button
             onClick={() => setProfileSavedMsg('')}
             className="text-emerald-700 hover:text-emerald-900 text-xs font-semibold px-2 py-1"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {/* Error Notification */}
+      {errorMsg && (
+        <div className="bg-red-50 border border-red-200 p-4 rounded-2xl text-sm text-red-900 flex items-center justify-between shadow-xs animate-fadeIn">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-red-100 text-red-600 flex items-center justify-center shrink-0">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <p className="font-semibold text-xs sm:text-sm">{errorMsg}</p>
+          </div>
+          <button
+            onClick={() => setErrorMsg('')}
+            className="text-red-700 hover:text-red-900 text-xs font-semibold px-2 py-1"
           >
             Dismiss
           </button>

@@ -7,6 +7,7 @@ import { IApplication, IApplicationsResponse, EApplicationStatus } from '../../.
 import StatusBadge from '../../../components/StatusBadge'
 import Pagination from '../../../components/Pagination'
 import LoadingSpinner from '../../../components/LoadingSpinner'
+import ConfirmationModal from '../../../components/ConfirmationModal'
 
 export default function SeekerApplicationsPage() {
   const [applications, setApplications] = useState<IApplication[]>([])
@@ -23,6 +24,23 @@ export default function SeekerApplicationsPage() {
   const [errorMsg, setErrorMsg] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
   const [withdrawingId, setWithdrawingId] = useState<string | null>(null)
+
+  // Custom Confirmation Dialog State
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean
+    title: string
+    message: string
+    confirmText?: string
+    variant?: 'danger' | 'warning' | 'primary'
+    onConfirm: () => void
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    confirmText: 'Confirm',
+    variant: 'danger',
+    onConfirm: () => {},
+  })
 
   const fetchApplications = useCallback(async (targetPage = 1) => {
     setLoading(true)
@@ -58,35 +76,52 @@ export default function SeekerApplicationsPage() {
     return !unwithdrawable.includes(status)
   }
 
-  const handleWithdraw = async (applicationId: string) => {
-    if (!confirm('Are you sure you want to withdraw this application? This action cannot be undone.')) {
-      return
-    }
+  const handleWithdraw = (applicationId: string) => {
+    setConfirmConfig({
+      isOpen: true,
+      title: 'Withdraw Application?',
+      message: 'Are you sure you want to withdraw this job application? This action cannot be undone and you will not be considered further.',
+      confirmText: 'Withdraw Application',
+      variant: 'danger',
+      onConfirm: async () => {
+        setConfirmConfig((prev) => ({ ...prev, isOpen: false }))
+        setWithdrawingId(applicationId)
+        setErrorMsg('')
+        setSuccessMsg('')
 
-    setWithdrawingId(applicationId)
-    setErrorMsg('')
-    setSuccessMsg('')
-
-    try {
-      const res = await apiClient.patch<IApplication>(`/seeker/applications/${applicationId}/withdraw`)
-      if (res.success) {
-        setSuccessMsg('Application withdrawn successfully.')
-        await fetchApplications(page)
-      }
-    } catch (err: any) {
-      if (err instanceof ApiError) {
-        setErrorMsg(err.message)
-      } else {
-        setErrorMsg('Failed to withdraw application.')
-      }
-    } finally {
-      setWithdrawingId(null)
-    }
+        try {
+          const res = await apiClient.patch<IApplication>(`/seeker/applications/${applicationId}/withdraw`)
+          if (res.success) {
+            setSuccessMsg('Application withdrawn successfully.')
+            await fetchApplications(page)
+          }
+        } catch (err: any) {
+          if (err instanceof ApiError) {
+            setErrorMsg(err.message)
+          } else {
+            setErrorMsg('Failed to withdraw application.')
+          }
+        } finally {
+          setWithdrawingId(null)
+        }
+      },
+    })
   }
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
-      {/* Header */}
+      {/* Custom Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={confirmConfig.isOpen}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        confirmText={confirmConfig.confirmText}
+        variant={confirmConfig.variant}
+        onConfirm={confirmConfig.onConfirm}
+        onCancel={() => setConfirmConfig((prev) => ({ ...prev, isOpen: false }))}
+      />
+
+      {/* Header Card */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Application Tracking</h1>
