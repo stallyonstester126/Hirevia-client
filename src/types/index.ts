@@ -8,7 +8,11 @@ export interface IUser {
   _id: string
   name: string
   email: string
-  phoneNumber: string
+  phoneNumber?: string | {
+    isoCode?: string
+    countryCode?: string
+    internationalNumber?: string
+  }
   role: EUserRoles
   status?: {
     status: boolean

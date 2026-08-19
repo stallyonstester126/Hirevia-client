@@ -67,15 +67,19 @@ export default function SeekerLayout({ children }: { children: React.ReactNode }
 
               {/* User info & Logout */}
               <div className="hidden md:flex items-center space-x-4">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-700 font-bold text-xs uppercase">
+                <Link
+                  href="/seeker/account"
+                  className="flex items-center gap-2.5 hover:opacity-80 transition group"
+                  title="View Account & Security Settings"
+                >
+                  <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-700 font-bold text-xs uppercase group-hover:border-[#146BFF] transition">
                     {user?.name ? user.name.charAt(0) : 'S'}
                   </div>
                   <div className="text-left">
-                    <p className="text-xs font-semibold text-slate-900 leading-none">{user?.name || 'Candidate'}</p>
-                    <span className="text-[10px] font-medium text-slate-400">Job Seeker</span>
+                    <p className="text-xs font-semibold text-slate-900 leading-none group-hover:text-[#146BFF] transition">{user?.name || 'Candidate'}</p>
+                    <span className="text-[10px] font-medium text-slate-400">Candidate Account →</span>
                   </div>
-                </div>
+                </Link>
 
                 <button
                   type="button"
@@ -125,6 +129,14 @@ export default function SeekerLayout({ children }: { children: React.ReactNode }
                   </Link>
                 )
               })}
+
+              <Link
+                href="/seeker/account"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                Account & Security Settings
+              </Link>
 
               <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
                 <span className="text-xs text-slate-600 font-medium">{user?.name}</span>

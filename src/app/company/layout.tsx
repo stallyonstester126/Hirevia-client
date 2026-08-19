@@ -82,15 +82,19 @@ export default function CompanyLayout({ children }: { children: React.ReactNode 
                   + Post a Job
                 </Link>
 
-                <div className="flex items-center gap-2.5 pl-2 border-l border-slate-200">
-                  <div className="w-8 h-8 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-800 font-bold text-xs uppercase">
+                <Link
+                  href="/company/account"
+                  className="flex items-center gap-2.5 pl-2 border-l border-slate-200 hover:opacity-80 transition group"
+                  title="View Account & Security Settings"
+                >
+                  <div className="w-8 h-8 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-800 font-bold text-xs uppercase group-hover:border-[#146BFF] transition">
                     {user?.name ? user.name.charAt(0) : 'C'}
                   </div>
                   <div className="text-left">
-                    <p className="text-xs font-semibold text-slate-900 leading-none">{user?.name || 'Company'}</p>
-                    <span className="text-[10px] font-medium text-slate-400">Employer Admin</span>
+                    <p className="text-xs font-semibold text-slate-900 leading-none group-hover:text-[#146BFF] transition">{user?.name || 'Company'}</p>
+                    <span className="text-[10px] font-medium text-slate-400">Employer Account →</span>
                   </div>
-                </div>
+                </Link>
 
                 <button
                   type="button"
@@ -140,6 +144,14 @@ export default function CompanyLayout({ children }: { children: React.ReactNode 
                   </Link>
                 )
               })}
+
+              <Link
+                href="/company/account"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block px-3 py-2.5 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                Account & Security Settings
+              </Link>
 
               <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
                 <span className="text-xs text-slate-600 font-medium">{user?.name}</span>
