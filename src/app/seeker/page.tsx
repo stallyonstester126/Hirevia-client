@@ -7,6 +7,7 @@ import { useAuth } from '../../context/AuthContext'
 import { IJob, IApplicationsResponse, IResume, ISeekerProfile } from '../../types'
 import StatusBadge from '../../components/StatusBadge'
 import LoadingSpinner from '../../components/LoadingSpinner'
+import SeekerProfileModal from '../../components/SeekerProfileModal'
 
 export default function SeekerDashboard() {
   const { user } = useAuth()
@@ -14,6 +15,9 @@ export default function SeekerDashboard() {
   const [applicationsCount, setApplicationsCount] = useState(0)
   const [resumesCount, setResumesCount] = useState(0)
   const [hasProfile, setHasProfile] = useState(false)
+  const [profileData, setProfileData] = useState<ISeekerProfile | null>(null)
+  const [showProfileModal, setShowProfileModal] = useState(false)
+  const [profileSavedMsg, setProfileSavedMsg] = useState('')
   const [recentJobs, setRecentJobs] = useState<IJob[]>([])
 
   useEffect(() => {
@@ -38,8 +42,18 @@ export default function SeekerDashboard() {
         setResumesCount(resumesRes.value.data?.length || 0)
       }
 
-      if (profileRes.status === 'fulfilled' && profileRes.value.success) {
-        setHasProfile(true)
+      if (profileRes.status === 'fulfilled' && profileRes.value.success && profileRes.value.data) {
+        const prof = profileRes.value.data
+        setProfileData(prof)
+        if (prof.headline && prof.headline.trim().length > 0) {
+          setHasProfile(true)
+        } else {
+          setHasProfile(false)
+          setShowProfileModal(true)
+        }
+      } else {
+        setHasProfile(false)
+        setShowProfileModal(true)
       }
 
       if (jobsRes.status === 'fulfilled' && jobsRes.value.success) {
@@ -52,6 +66,13 @@ export default function SeekerDashboard() {
     }
   }
 
+  const handleProfileSaved = (saved: ISeekerProfile) => {
+    setProfileData(saved)
+    setHasProfile(true)
+    setProfileSavedMsg('Professional profile saved successfully! Your candidate profile is now active.')
+    setTimeout(() => setProfileSavedMsg(''), 5000)
+  }
+
   if (loading) {
     return (
       <div className="py-20 flex justify-center items-center">
@@ -62,6 +83,65 @@ export default function SeekerDashboard() {
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
+      {/* Onboarding Candidate Profile Modal */}
+      <SeekerProfileModal
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+        onSaved={handleProfileSaved}
+        initialProfile={profileData}
+        profileExists={!!profileData?._id}
+      />
+
+      {/* Success Notification */}
+      {profileSavedMsg && (
+        <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl text-sm text-emerald-900 flex items-center justify-between shadow-xs animate-fadeIn">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <p className="font-semibold text-xs sm:text-sm">{profileSavedMsg}</p>
+          </div>
+          <button
+            onClick={() => setProfileSavedMsg('')}
+            className="text-emerald-700 hover:text-emerald-900 text-xs font-semibold px-2 py-1 cursor-pointer"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {/* Incomplete Profile Callout Banner if user skipped modal */}
+      {!hasProfile && (
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/80 p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
+          <div className="flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-[#146BFF] text-white flex items-center justify-center shrink-0 shadow-md shadow-blue-500/20">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                />
+              </svg>
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-slate-900">Your Candidate Profile is Incomplete</h3>
+              <p className="text-xs text-slate-600">
+                Complete your professional headline, location, bio, and key skills to get matched with top engineering opportunities.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setShowProfileModal(true)}
+            className="px-4 py-2 bg-[#146BFF] hover:bg-[#0E5CE8] text-white text-xs font-bold rounded-xl shadow-xs transition shrink-0 cursor-pointer"
+          >
+            Complete Profile Now →
+          </button>
+        </div>
+      )}
+
       {/* Welcome Banner */}
       <div className="bg-gradient-to-r from-[#0E5CE8] via-[#146BFF] to-[#0D55D8] rounded-3xl p-6 sm:p-8 text-white shadow-lg shadow-blue-500/15 relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="space-y-2 relative z-10">
