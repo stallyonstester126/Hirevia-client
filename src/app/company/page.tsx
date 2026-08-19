@@ -7,11 +7,15 @@ import { useAuth } from '../../context/AuthContext'
 import { IJob, IJobsResponse, EJobStatus, EPaymentStatus, ICompanyProfile } from '../../types'
 import StatusBadge from '../../components/StatusBadge'
 import LoadingSpinner from '../../components/LoadingSpinner'
+import CompanyProfileModal from '../../components/CompanyProfileModal'
 
 export default function CompanyDashboard() {
   const { user } = useAuth()
   const [jobs, setJobs] = useState<IJob[]>([])
   const [hasProfile, setHasProfile] = useState(false)
+  const [profileData, setProfileData] = useState<ICompanyProfile | null>(null)
+  const [showProfileModal, setShowProfileModal] = useState(false)
+  const [profileSavedMsg, setProfileSavedMsg] = useState('')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -30,14 +34,32 @@ export default function CompanyDashboard() {
         setJobs(jobsRes.value.data.jobs || [])
       }
 
-      if (profileRes.status === 'fulfilled' && profileRes.value.success) {
-        setHasProfile(true)
+      if (profileRes.status === 'fulfilled' && profileRes.value.success && profileRes.value.data) {
+        const prof = profileRes.value.data
+        setProfileData(prof)
+        if (prof.companyName && prof.companyName.trim().length > 0) {
+          setHasProfile(true)
+        } else {
+          setHasProfile(false)
+          setShowProfileModal(true)
+        }
+      } else {
+        // Profile not found or not created yet
+        setHasProfile(false)
+        setShowProfileModal(true)
       }
     } catch {
       // Ignored
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleProfileSaved = (saved: ICompanyProfile) => {
+    setProfileData(saved)
+    setHasProfile(true)
+    setProfileSavedMsg('Company profile saved successfully! Your organization details are now active.')
+    setTimeout(() => setProfileSavedMsg(''), 5000)
   }
 
   const publishedCount = jobs.filter((j) => j.status === EJobStatus.PUBLISHED).length
@@ -54,12 +76,71 @@ export default function CompanyDashboard() {
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
+      {/* Onboarding Profile Modal */}
+      <CompanyProfileModal
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+        onSaved={handleProfileSaved}
+        initialProfile={profileData}
+        profileExists={!!profileData?._id}
+      />
+
+      {/* Success Notification */}
+      {profileSavedMsg && (
+        <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl text-sm text-emerald-900 flex items-center justify-between shadow-xs animate-fadeIn">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <p className="font-semibold text-xs sm:text-sm">{profileSavedMsg}</p>
+          </div>
+          <button
+            onClick={() => setProfileSavedMsg('')}
+            className="text-emerald-700 hover:text-emerald-900 text-xs font-semibold px-2 py-1"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {/* Incomplete Profile Callout Banner if user skipped modal */}
+      {!hasProfile && (
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/80 p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
+          <div className="flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-blue-500/20">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                />
+              </svg>
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-slate-900">Your Company Profile is Incomplete</h3>
+              <p className="text-xs text-slate-600">
+                Complete your brand overview, headquarters, and contact info so candidates can learn about your organization.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setShowProfileModal(true)}
+            className="px-4 py-2 bg-[#146BFF] hover:bg-[#0E5CE8] text-white text-xs font-bold rounded-xl shadow-xs transition shrink-0 cursor-pointer"
+          >
+            Complete Profile Now →
+          </button>
+        </div>
+      )}
+
       {/* Welcome Banner */}
       <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 rounded-3xl p-6 sm:p-8 text-white shadow-lg shadow-slate-900/10 relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="space-y-2 relative z-10">
           <span className="text-xs font-bold uppercase tracking-wider text-blue-400">Employer Recruitment Portal</span>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-            Welcome, {user?.name || 'Recruiting Team'}! 👋
+            Welcome, {profileData?.companyName || user?.name || 'Recruiting Team'}! 👋
           </h1>
           <p className="text-sm text-slate-300 max-w-xl leading-relaxed">
             Manage your open engineering positions, pay posting fees with Stripe, review applicants, and leverage AI job-match scoring.
