@@ -27,7 +27,11 @@ export default function CompanyApplicationDetailPage() {
   const [matchScore, setMatchScore] = useState<IJobMatchScore | null>(null)
   const [testInvite, setTestInvite] = useState<any | null>(null)
   const [interviewInvite, setInterviewInvite] = useState<IInterviewInvite | null>(null)
-  const [showTranscript, setShowTranscript] = useState(false)
+
+  // Collapsible toggle states (default: collapsed)
+  const [showMatchDetails, setShowMatchDetails] = useState(false)
+  const [showAssessmentDetails, setShowAssessmentDetails] = useState(false)
+  const [showInterviewDetails, setShowInterviewDetails] = useState(false)
 
   const [loading, setLoading] = useState(true)
   const [statusUpdating, setStatusUpdating] = useState(false)
@@ -75,7 +79,6 @@ export default function CompanyApplicationDetailPage() {
     }
   }, [applicationId])
 
-
   useEffect(() => {
     if (applicationId) {
       fetchApplicationDetails()
@@ -101,7 +104,6 @@ export default function CompanyApplicationDetailPage() {
       if (intervalId) clearInterval(intervalId)
     }
   }, [application?.autoScreeningStatus, fetchApplicationDetails])
-
 
   // ================= STATUS MACHINE HELPERS =================
   const getNextAllowedStatuses = (currentStatus?: EApplicationStatus): EApplicationStatus[] => {
@@ -230,7 +232,7 @@ export default function CompanyApplicationDetailPage() {
         </div>
       )}
 
-      {/* Header & Status Transition Controls Card */}
+      {/* Header & Status Transition Controls Card (Full-width) */}
       <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200/80 shadow-xs space-y-6">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           <div className="flex items-start gap-4">
@@ -301,13 +303,13 @@ export default function CompanyApplicationDetailPage() {
         </div>
       </div>
 
-      {/* Main Grid: 2 Columns */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      {/* Main Grid: 2 Columns with items-start */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         
-        {/* Left Column: Candidate Profile & Cover Letter (7 cols) */}
+        {/* LEFT COLUMN: Candidate Profile, Resume, CV Insights & Cover Letter (7 cols) */}
         <div className="lg:col-span-7 space-y-6">
           
-          {/* Submitted Resume Attachment */}
+          {/* Panel 1: Submitted Resume Document */}
           <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs space-y-3">
             <h2 className="text-base font-bold text-slate-900">Submitted Resume Document</h2>
             <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/60 flex items-center justify-between gap-4">
@@ -331,7 +333,7 @@ export default function CompanyApplicationDetailPage() {
             </div>
           </div>
 
-          {/* Candidate Profile Details (if filled) */}
+          {/* Panel 2: Candidate Background Details */}
           {seekerProfile ? (
             <div className="bg-white p-6 sm:p-7 rounded-3xl border border-slate-200/80 shadow-xs space-y-5">
               <h2 className="text-base font-bold text-slate-900">Candidate Background</h2>
@@ -413,7 +415,61 @@ export default function CompanyApplicationDetailPage() {
             </div>
           )}
 
-          {/* Cover Letter */}
+          {/* Panel 3: Extracted CV Insights (Moved from Right column to Left column) */}
+          <div className="bg-white p-6 sm:p-7 rounded-3xl border border-slate-200/80 shadow-xs space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-base font-bold text-slate-900">Extracted CV Insights</h3>
+              {cvAnalysis?.estimatedExperienceLevel && (
+                <span className="px-2.5 py-0.5 rounded-full bg-purple-50 text-purple-700 text-xs font-bold border border-purple-200 uppercase">
+                  {cvAnalysis.estimatedExperienceLevel} Level
+                </span>
+              )}
+            </div>
+
+            {cvAnalysis ? (
+              <div className="space-y-4">
+                {/* Extracted Skills */}
+                {cvAnalysis.extractedSkills && cvAnalysis.extractedSkills.length > 0 && (
+                  <div className="space-y-1.5">
+                    <span className="text-xs font-bold text-slate-700 uppercase tracking-wider block">Extracted Skills</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {cvAnalysis.extractedSkills.map((skill, idx) => (
+                        <span key={idx} className="px-2.5 py-1 bg-blue-50 text-[#146BFF] border border-blue-200 rounded-lg text-xs font-semibold">
+                          {skill}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Experience Summary */}
+                {cvAnalysis.experienceSummary && (
+                  <div className="space-y-1">
+                    <span className="text-xs font-bold text-slate-700 uppercase tracking-wider block">Experience Summary</span>
+                    <p className="p-3 bg-slate-50 rounded-xl text-xs text-slate-600 leading-relaxed border border-slate-200/60">
+                      {cvAnalysis.experienceSummary}
+                    </p>
+                  </div>
+                )}
+
+                {/* Education Summary */}
+                {cvAnalysis.educationSummary && (
+                  <div className="space-y-1">
+                    <span className="text-xs font-bold text-slate-700 uppercase tracking-wider block">Education Summary</span>
+                    <p className="p-3 bg-slate-50 rounded-xl text-xs text-slate-600 leading-relaxed border border-slate-200/60">
+                      {cvAnalysis.educationSummary}
+                    </p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p className="text-xs text-slate-400 italic">
+                CV analysis not yet generated for this resume version.
+              </p>
+            )}
+          </div>
+
+          {/* Panel 4: Submitted Cover Letter (if present) */}
           {application.coverLetter && (
             <div className="bg-white p-6 sm:p-7 rounded-3xl border border-slate-200/80 shadow-xs space-y-3">
               <h2 className="text-base font-bold text-slate-900">Submitted Cover Letter / Note</h2>
@@ -424,7 +480,7 @@ export default function CompanyApplicationDetailPage() {
           )}
         </div>
 
-        {/* Right Column: AI CV Analysis & Match Score (5 cols) */}
+        {/* RIGHT COLUMN: AI Evaluation Stages (5 cols) */}
         <div className="lg:col-span-5 space-y-6">
 
           {/* Card 0: Automated AI Screening & Assessment Status */}
@@ -491,7 +547,7 @@ export default function CompanyApplicationDetailPage() {
             </div>
           </div>
           
-          {/* Card 1: Job Match Score */}
+          {/* Card 1: AI Job Match Score (Collapsible Rationale) */}
           <div className="bg-gradient-to-br from-indigo-900 via-blue-900 to-slate-900 p-6 sm:p-7 rounded-3xl text-white shadow-xl space-y-4">
 
             <div className="flex items-center justify-between">
@@ -525,12 +581,13 @@ export default function CompanyApplicationDetailPage() {
               </div>
             ) : matchScore ? (
               <div className="space-y-3.5 pt-1">
+                {/* Headline Score always visible */}
                 <div className="flex items-baseline gap-2">
                   <span className="text-4xl sm:text-5xl font-black text-emerald-400">{matchScore.score}</span>
                   <span className="text-lg text-blue-200 font-bold">/ 100</span>
                 </div>
 
-                {/* Progress bar */}
+                {/* Progress bar always visible */}
                 <div className="w-full bg-white/10 rounded-full h-2.5 overflow-hidden">
                   <div
                     className={`h-2.5 rounded-full transition-all duration-500 ${
@@ -544,12 +601,24 @@ export default function CompanyApplicationDetailPage() {
                   ></div>
                 </div>
 
-                {/* Rationale */}
-                <div className="pt-2 border-t border-white/10 space-y-1">
-                  <span className="text-[11px] font-bold text-blue-200 uppercase tracking-wider block">AI Match Rationale</span>
-                  <p className="text-xs text-blue-100 leading-relaxed whitespace-pre-line">
-                    {matchScore.rationale}
-                  </p>
+                {/* Collapsible Rationale Section */}
+                <div className="pt-2 border-t border-white/10 space-y-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowMatchDetails((prev) => !prev)}
+                    className="flex items-center justify-between w-full text-[11px] font-bold text-blue-200 uppercase tracking-wider hover:text-white transition cursor-pointer py-1"
+                  >
+                    <span>AI Match Rationale</span>
+                    <span className="text-xs font-semibold normal-case px-2 py-0.5 rounded-md bg-white/10 hover:bg-white/20 transition">
+                      {showMatchDetails ? 'Hide details ▲' : 'Show details ▼'}
+                    </span>
+                  </button>
+
+                  {showMatchDetails && (
+                    <p className="text-xs text-blue-100 leading-relaxed whitespace-pre-line pt-1 animate-fadeIn">
+                      {matchScore.rationale}
+                    </p>
+                  )}
                 </div>
               </div>
             ) : (
@@ -566,7 +635,7 @@ export default function CompanyApplicationDetailPage() {
             )}
           </div>
 
-          {/* Card 1.5: AI Assessment Score & Candidate Written Answers */}
+          {/* Card 1.5: AI Assessment Score & Candidate Written Answers (Collapsible Breakdown) */}
           {testInvite && (testInvite.status === 'COMPLETED' || (testInvite.responses && testInvite.responses.length > 0)) && (
             <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 p-6 sm:p-7 rounded-3xl text-white shadow-xl space-y-5">
               <div className="flex items-center justify-between border-b border-white/10 pb-3">
@@ -579,7 +648,7 @@ export default function CompanyApplicationDetailPage() {
                 </span>
               </div>
 
-              {/* Assessment Score */}
+              {/* Assessment Score always visible */}
               {testInvite.assessmentScore !== null && testInvite.assessmentScore !== undefined ? (
                 <div className="space-y-3">
                   <div className="flex items-baseline gap-2">
@@ -600,41 +669,88 @@ export default function CompanyApplicationDetailPage() {
                     ></div>
                   </div>
 
-                  {testInvite.assessmentFeedback && (
-                    <div className="pt-2 border-t border-white/10 space-y-1">
-                      <span className="text-[11px] font-bold text-blue-200 uppercase tracking-wider block">AI Evaluation Feedback</span>
-                      <p className="text-xs text-blue-100 leading-relaxed whitespace-pre-line">
-                        {testInvite.assessmentFeedback}
-                      </p>
-                    </div>
-                  )}
+                  {/* Collapsible Feedback & Question Breakdown */}
+                  <div className="pt-2 border-t border-white/10 space-y-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowAssessmentDetails((prev) => !prev)}
+                      className="flex items-center justify-between w-full text-[11px] font-bold text-blue-200 uppercase tracking-wider hover:text-white transition cursor-pointer py-1"
+                    >
+                      <span>Evaluation & Question Breakdown</span>
+                      <span className="text-xs font-semibold normal-case px-2 py-0.5 rounded-md bg-white/10 hover:bg-white/20 transition">
+                        {showAssessmentDetails ? 'Hide breakdown ▲' : 'Show breakdown ▼'}
+                      </span>
+                    </button>
+
+                    {showAssessmentDetails && (
+                      <div className="space-y-4 pt-1 animate-fadeIn">
+                        {testInvite.assessmentFeedback && (
+                          <div className="space-y-1">
+                            <span className="text-[11px] font-bold text-blue-200 uppercase tracking-wider block">AI Evaluation Feedback</span>
+                            <p className="text-xs text-blue-100 leading-relaxed whitespace-pre-line">
+                              {testInvite.assessmentFeedback}
+                            </p>
+                          </div>
+                        )}
+
+                        {testInvite.responses && testInvite.responses.length > 0 && (
+                          <div className="space-y-3 pt-2 border-t border-white/10">
+                            <span className="text-xs font-bold text-blue-200 uppercase tracking-wider block">Candidate Written Answers</span>
+                            <div className="space-y-3">
+                              {testInvite.responses.map((resp: any, idx: number) => (
+                                <div key={idx} className="p-3.5 bg-white/5 rounded-2xl border border-white/10 space-y-1.5">
+                                  <p className="text-xs font-bold text-blue-300">{resp.question}</p>
+                                  <p className="text-xs text-slate-100 leading-relaxed whitespace-pre-line bg-black/20 p-2.5 rounded-xl">
+                                    {resp.answer || '(No answer provided)'}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               ) : (
-                <div className="p-3 bg-white/5 rounded-xl text-xs text-blue-200 italic border border-white/10">
-                  AI automated grading is unavailable. Candidate responses are available below for human evaluation.
-                </div>
-              )}
-
-              {/* Candidate Written Responses */}
-              {testInvite.responses && testInvite.responses.length > 0 && (
-                <div className="pt-2 border-t border-white/10 space-y-3">
-                  <span className="text-xs font-bold text-blue-200 uppercase tracking-wider block">Candidate Written Answers</span>
-                  <div className="space-y-3">
-                    {testInvite.responses.map((resp: any, idx: number) => (
-                      <div key={idx} className="p-3.5 bg-white/5 rounded-2xl border border-white/10 space-y-1.5">
-                        <p className="text-xs font-bold text-blue-300">{resp.question}</p>
-                        <p className="text-xs text-slate-100 leading-relaxed whitespace-pre-line bg-black/20 p-2.5 rounded-xl">
-                          {resp.answer || '(No answer provided)'}
-                        </p>
-                      </div>
-                    ))}
+                <div className="space-y-3">
+                  <div className="p-3 bg-white/5 rounded-xl text-xs text-blue-200 italic border border-white/10">
+                    AI automated grading is unavailable. Candidate responses are available below for human evaluation.
                   </div>
+
+                  {testInvite.responses && testInvite.responses.length > 0 && (
+                    <div className="pt-2 border-t border-white/10 space-y-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowAssessmentDetails((prev) => !prev)}
+                        className="flex items-center justify-between w-full text-[11px] font-bold text-blue-200 uppercase tracking-wider hover:text-white transition cursor-pointer py-1"
+                      >
+                        <span>Candidate Written Answers ({testInvite.responses.length})</span>
+                        <span className="text-xs font-semibold normal-case px-2 py-0.5 rounded-md bg-white/10 hover:bg-white/20 transition">
+                          {showAssessmentDetails ? 'Hide answers ▲' : 'Show answers ▼'}
+                        </span>
+                      </button>
+
+                      {showAssessmentDetails && (
+                        <div className="space-y-3 pt-2 animate-fadeIn">
+                          {testInvite.responses.map((resp: any, idx: number) => (
+                            <div key={idx} className="p-3.5 bg-white/5 rounded-2xl border border-white/10 space-y-1.5">
+                              <p className="text-xs font-bold text-blue-300">{resp.question}</p>
+                              <p className="text-xs text-slate-100 leading-relaxed whitespace-pre-line bg-black/20 p-2.5 rounded-xl">
+                                {resp.answer || '(No answer provided)'}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
           )}
 
-          {/* Card 1.6: AI Voice Interview Evaluation & Full Transcript */}
+          {/* Card 1.6: AI Voice Interview Evaluation & Full Transcript (Collapsible Breakdown & Transcript) */}
           {interviewInvite && (
             <div className="bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950 p-6 sm:p-7 rounded-3xl text-white shadow-xl space-y-5">
               <div className="flex items-center justify-between border-b border-white/10 pb-3">
@@ -657,7 +773,7 @@ export default function CompanyApplicationDetailPage() {
 
               {interviewInvite.status === 'COMPLETED' ? (
                 <div className="space-y-4">
-                  {/* Session Integrity & Completion Info */}
+                  {/* Session Integrity & Completion Info always visible */}
                   <div className="flex flex-wrap items-center gap-2 pt-1 pb-2 border-b border-white/10 text-[11px] text-purple-200">
                     {interviewInvite.endedReason && (
                       <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white/10 rounded-lg border border-white/10 font-medium">
@@ -686,7 +802,8 @@ export default function CompanyApplicationDetailPage() {
                       </span>
                     </div>
                   </div>
-                  {/* Interview Score */}
+
+                  {/* Interview Score always visible */}
                   {interviewInvite.interviewScore !== null && interviewInvite.interviewScore !== undefined ? (
                     <div className="space-y-3">
                       <div className="flex items-baseline gap-2">
@@ -706,15 +823,6 @@ export default function CompanyApplicationDetailPage() {
                           style={{ width: `${Math.min(100, interviewInvite.interviewScore)}%` }}
                         ></div>
                       </div>
-
-                      {interviewInvite.interviewFeedback && (
-                        <div className="pt-2 border-t border-white/10 space-y-1">
-                          <span className="text-[11px] font-bold text-purple-200 uppercase tracking-wider block">AI Recruiter Evaluation</span>
-                          <p className="text-xs text-purple-100 leading-relaxed whitespace-pre-line">
-                            {interviewInvite.interviewFeedback}
-                          </p>
-                        </div>
-                      )}
                     </div>
                   ) : (
                     <div className="p-3 bg-white/5 rounded-xl text-xs text-purple-200 italic border border-white/10">
@@ -722,23 +830,39 @@ export default function CompanyApplicationDetailPage() {
                     </div>
                   )}
 
-                  {/* Transcript Collapsible Section */}
-                  {interviewInvite.transcript && (
-                    <div className="pt-3 border-t border-white/10 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-purple-200 uppercase tracking-wider">Conversation Transcript</span>
-                        <button
-                          type="button"
-                          onClick={() => setShowTranscript((prev) => !prev)}
-                          className="px-2.5 py-1 bg-white/10 hover:bg-white/20 text-purple-200 text-[11px] font-semibold rounded-lg border border-white/10 transition cursor-pointer"
-                        >
-                          {showTranscript ? '▲ Hide Transcript' : '▼ View Transcript'}
-                        </button>
-                      </div>
+                  {/* Collapsible Evaluation Feedback & Full Transcript */}
+                  {(interviewInvite.interviewFeedback || interviewInvite.transcript) && (
+                    <div className="pt-2 border-t border-white/10 space-y-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowInterviewDetails((prev) => !prev)}
+                        className="flex items-center justify-between w-full text-[11px] font-bold text-purple-200 uppercase tracking-wider hover:text-white transition cursor-pointer py-1"
+                      >
+                        <span>Evaluation & Full Transcript</span>
+                        <span className="text-xs font-semibold normal-case px-2 py-0.5 rounded-md bg-white/10 hover:bg-white/20 transition">
+                          {showInterviewDetails ? 'Hide details ▲' : 'Show full transcript ▼'}
+                        </span>
+                      </button>
 
-                      {showTranscript && (
-                        <div className="p-3.5 bg-black/40 rounded-2xl border border-white/10 max-h-80 overflow-y-auto space-y-2 text-xs leading-relaxed text-slate-200 whitespace-pre-line">
-                          {interviewInvite.transcript}
+                      {showInterviewDetails && (
+                        <div className="space-y-4 pt-1 animate-fadeIn">
+                          {interviewInvite.interviewFeedback && (
+                            <div className="space-y-1">
+                              <span className="text-[11px] font-bold text-purple-200 uppercase tracking-wider block">AI Recruiter Evaluation</span>
+                              <p className="text-xs text-purple-100 leading-relaxed whitespace-pre-line">
+                                {interviewInvite.interviewFeedback}
+                              </p>
+                            </div>
+                          )}
+
+                          {interviewInvite.transcript && (
+                            <div className="space-y-2 pt-2 border-t border-white/10">
+                              <span className="text-xs font-bold text-purple-200 uppercase tracking-wider block">Conversation Transcript</span>
+                              <div className="p-3.5 bg-black/40 rounded-2xl border border-white/10 max-h-80 overflow-y-auto space-y-2 text-xs leading-relaxed text-slate-200 whitespace-pre-line">
+                                {interviewInvite.transcript}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
@@ -756,60 +880,6 @@ export default function CompanyApplicationDetailPage() {
               )}
             </div>
           )}
-
-          {/* Card 2: Extracted CV Analysis */}
-          <div className="bg-white p-6 sm:p-7 rounded-3xl border border-slate-200/80 shadow-xs space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-base font-bold text-slate-900">Extracted CV Insights</h3>
-              {cvAnalysis?.estimatedExperienceLevel && (
-                <span className="px-2.5 py-0.5 rounded-full bg-purple-50 text-purple-700 text-xs font-bold border border-purple-200 uppercase">
-                  {cvAnalysis.estimatedExperienceLevel} Level
-                </span>
-              )}
-            </div>
-
-            {cvAnalysis ? (
-              <div className="space-y-4">
-                {/* Extracted Skills */}
-                {cvAnalysis.extractedSkills && cvAnalysis.extractedSkills.length > 0 && (
-                  <div className="space-y-1.5">
-                    <span className="text-xs font-bold text-slate-700 uppercase tracking-wider block">Extracted Skills</span>
-                    <div className="flex flex-wrap gap-1.5">
-                      {cvAnalysis.extractedSkills.map((skill, idx) => (
-                        <span key={idx} className="px-2.5 py-1 bg-blue-50 text-[#146BFF] border border-blue-200 rounded-lg text-xs font-semibold">
-                          {skill}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Experience Summary */}
-                {cvAnalysis.experienceSummary && (
-                  <div className="space-y-1">
-                    <span className="text-xs font-bold text-slate-700 uppercase tracking-wider block">Experience Summary</span>
-                    <p className="p-3 bg-slate-50 rounded-xl text-xs text-slate-600 leading-relaxed border border-slate-200/60">
-                      {cvAnalysis.experienceSummary}
-                    </p>
-                  </div>
-                )}
-
-                {/* Education Summary */}
-                {cvAnalysis.educationSummary && (
-                  <div className="space-y-1">
-                    <span className="text-xs font-bold text-slate-700 uppercase tracking-wider block">Education Summary</span>
-                    <p className="p-3 bg-slate-50 rounded-xl text-xs text-slate-600 leading-relaxed border border-slate-200/60">
-                      {cvAnalysis.educationSummary}
-                    </p>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <p className="text-xs text-slate-400 italic">
-                CV analysis not yet generated for this resume version.
-              </p>
-            )}
-          </div>
 
         </div>
       </div>

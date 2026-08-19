@@ -82,13 +82,22 @@ describe('CompanyApplicationDetailPage Pipeline & Match Score', () => {
     })
   })
 
-  it('renders candidate details, profile background, and AI match score', async () => {
+  it('renders candidate details, profile background, and AI match score with collapsible details', async () => {
     render(<CompanyApplicationDetailPage />)
 
     expect(await screen.findByText('Alice Developer')).toBeInTheDocument()
     expect(screen.getByText('alice@example.com')).toBeInTheDocument()
     expect(screen.getByText('Full Stack Engineer')).toBeInTheDocument()
     expect(screen.getByText('88')).toBeInTheDocument()
+
+    // Rationale is collapsed by default
+    expect(screen.queryByText(/Strong candidate match with required backend/i)).not.toBeInTheDocument()
+
+    // Click show details toggle
+    const toggleButton = screen.getByRole('button', { name: /Show details/i })
+    fireEvent.click(toggleButton)
+
+    // Now rationale is visible
     expect(screen.getByText(/Strong candidate match with required backend/i)).toBeInTheDocument()
   })
 
@@ -159,6 +168,10 @@ describe('CompanyApplicationDetailPage Pipeline & Match Score', () => {
     })
 
     expect(await screen.findByText('95')).toBeInTheDocument()
+
+    const toggleButton = screen.getByRole('button', { name: /Show details/i })
+    fireEvent.click(toggleButton)
+
     expect(screen.getByText(/Updated analysis reveals exceptional match/i)).toBeInTheDocument()
   })
 })
