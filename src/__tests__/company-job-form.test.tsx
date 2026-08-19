@@ -76,4 +76,14 @@ describe('JobForm Component Validation', () => {
       )
     })
   })
+
+  it('triggers onCancel when Cancel button is clicked', () => {
+    const mockOnCancel = vi.fn()
+    render(<JobForm onSubmit={mockOnSubmit} onCancel={mockOnCancel} isSubmitting={false} />)
+
+    const cancelBtn = screen.getByRole('button', { name: /Cancel/i })
+    expect(cancelBtn).toBeInTheDocument()
+    fireEvent.click(cancelBtn)
+    expect(mockOnCancel).toHaveBeenCalledTimes(1)
+  })
 })

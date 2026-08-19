@@ -57,6 +57,7 @@ export default function NewJobPage() {
 
       <JobForm
         onSubmit={handleCreateJob}
+        onCancel={() => router.push('/company/jobs')}
         isSubmitting={isSubmitting}
         submitButtonText="Create Draft Job →"
       />

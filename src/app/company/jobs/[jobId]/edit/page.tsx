@@ -107,6 +107,7 @@ export default function EditJobPage() {
       <JobForm
         initialData={job}
         onSubmit={handleUpdateJob}
+        onCancel={() => router.push(`/company/jobs/${jobId}`)}
         isSubmitting={isSubmitting}
         submitButtonText="Save Changes →"
       />

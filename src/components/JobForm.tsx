@@ -5,6 +5,7 @@ import TagInput from './TagInput'
 interface JobFormProps {
   initialData?: Partial<IJob>
   onSubmit: (jobData: Partial<IJob>) => Promise<void>
+  onCancel?: () => void
   isSubmitting: boolean
   submitButtonText?: string
 }
@@ -12,6 +13,7 @@ interface JobFormProps {
 export default function JobForm({
   initialData,
   onSubmit,
+  onCancel,
   isSubmitting,
   submitButtonText = 'Save Job Posting',
 }: JobFormProps) {
@@ -351,7 +353,17 @@ export default function JobForm({
       </div>
 
       {/* Submit Button Bar */}
-      <div className="flex justify-end gap-3">
+      <div className="flex justify-end items-center gap-3">
+        {onCancel && (
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={isSubmitting}
+            className="px-5 py-3 border border-slate-200 hover:bg-slate-50 text-slate-600 text-sm font-semibold rounded-xl transition cursor-pointer"
+          >
+            Cancel
+          </button>
+        )}
         <button
           type="submit"
           disabled={isSubmitting}
