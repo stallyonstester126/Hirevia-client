@@ -131,20 +131,13 @@ export default function MembershipModal({ isOpen, onClose }: MembershipModalProp
         </div>
 
         {/* Actions */}
-        <div className="space-y-2 pt-2">
+        <div className="pt-2">
           <button
             onClick={handleSubscribe}
             disabled={isCheckingOut}
             className="w-full py-3 px-6 bg-[#146BFF] hover:bg-[#0E5CE8] text-white text-sm font-bold rounded-xl shadow-lg shadow-blue-500/20 transition cursor-pointer disabled:opacity-60"
           >
             {isCheckingOut ? 'Opening Stripe Checkout...' : 'Buy Membership ($10 One-Time) →'}
-          </button>
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-full py-2 text-xs font-semibold text-slate-500 hover:text-slate-700 transition cursor-pointer"
-          >
-            Maybe Later
           </button>
         </div>
       </div>
