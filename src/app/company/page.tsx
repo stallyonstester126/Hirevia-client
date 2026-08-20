@@ -42,11 +42,18 @@ export default function CompanyDashboard() {
       }
 
       if (profileRes.status === 'fulfilled' && profileRes.value.success && profileRes.value.data) {
-        setProfileData(profileRes.value.data)
-        setHasProfile(true)
+        const prof = profileRes.value.data
+        setProfileData(prof)
+        if (prof.companyName && prof.companyName.trim().length > 0) {
+          setHasProfile(true)
+        } else {
+          setHasProfile(false)
+          setShowProfileModal(true)
+        }
       } else {
-        // If 404, profile does not exist yet (expected for new company)
+        // Profile does not exist yet (expected for new company registration/Google login)
         setHasProfile(false)
+        setShowProfileModal(true)
       }
 
       if (subRes.status === 'fulfilled' && subRes.value.success && subRes.value.data) {

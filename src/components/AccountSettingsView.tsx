@@ -97,12 +97,14 @@ export default function AccountSettingsView({ role }: AccountSettingsViewProps) 
     }
   }
 
+  const isGoogleUser = activeUser?.authProvider === 'google'
+
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault()
     setPasswordSuccess('')
     setPasswordError('')
 
-    if (!currentPassword) {
+    if (!isGoogleUser && !currentPassword) {
       setPasswordError('Please enter your current password.')
       return
     }
@@ -127,19 +129,24 @@ export default function AccountSettingsView({ role }: AccountSettingsViewProps) 
 
     setIsChangingPass(true)
     try {
-      const res = await apiClient.post('/user/change-password', {
-        currentPassword,
-        newPassword,
-      })
+      const payload: any = { newPassword }
+      if (!isGoogleUser && currentPassword) {
+        payload.currentPassword = currentPassword
+      }
+      const res = await apiClient.post('/user/change-password', payload)
       if (res.success) {
-        setPasswordSuccess('Password has been changed successfully!')
+        setPasswordSuccess(
+          isGoogleUser
+            ? 'Account password has been set successfully! You can now log in using either Google or your email & password.'
+            : 'Password has been changed successfully!'
+        )
         setCurrentPassword('')
         setNewPassword('')
         setConfirmPassword('')
-        setTimeout(() => setPasswordSuccess(''), 5000)
+        setTimeout(() => setPasswordSuccess(''), 6000)
       }
     } catch (err: any) {
-      setPasswordError(err?.message || 'Failed to change password. Please check your current password.')
+      setPasswordError(err?.message || 'Failed to update password. Please try again.')
     } finally {
       setIsChangingPass(false)
     }
@@ -304,9 +311,13 @@ export default function AccountSettingsView({ role }: AccountSettingsViewProps) 
             </svg>
           </div>
           <div>
-            <h2 className="text-lg font-bold text-slate-900">Security & Password</h2>
+            <h2 className="text-lg font-bold text-slate-900">
+              {isGoogleUser ? 'Set Account Password' : 'Security & Password'}
+            </h2>
             <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-              Update your account password. Ensure your password is at least 8 characters with letters, numbers, and special symbols.
+              {isGoogleUser
+                ? 'You logged in with Google. You can set a password below to also enable email and password login.'
+                : 'Update your account password. Ensure your password is at least 8 characters with letters, numbers, and special symbols.'}
             </p>
           </div>
         </div>
@@ -330,35 +341,37 @@ export default function AccountSettingsView({ role }: AccountSettingsViewProps) 
         )}
 
         <form onSubmit={handleChangePassword} className="space-y-4 max-w-lg">
-          {/* Current Password */}
-          <div className="space-y-1">
-            <label htmlFor="currentPassword" className="block text-xs font-semibold text-slate-700">
-              Current Password *
-            </label>
-            <div className="relative">
-              <input
-                id="currentPassword"
-                type={showCurrentPass ? 'text' : 'password'}
-                required
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                placeholder="Enter current password"
-                className="block w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-xs sm:text-sm focus:bg-white focus:outline-none focus:border-[#146BFF] focus:ring-3 focus:ring-blue-50 transition pr-14"
-              />
-              <button
-                type="button"
-                onClick={() => setShowCurrentPass(!showCurrentPass)}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-xs font-medium text-slate-500 hover:text-slate-700 cursor-pointer"
-              >
-                {showCurrentPass ? 'Hide' : 'Show'}
-              </button>
+          {/* Current Password (Shown only for non-Google accounts) */}
+          {!isGoogleUser && (
+            <div className="space-y-1">
+              <label htmlFor="currentPassword" className="block text-xs font-semibold text-slate-700">
+                Current Password *
+              </label>
+              <div className="relative">
+                <input
+                  id="currentPassword"
+                  type={showCurrentPass ? 'text' : 'password'}
+                  required
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="Enter current password"
+                  className="block w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-xs sm:text-sm focus:bg-white focus:outline-none focus:border-[#146BFF] focus:ring-3 focus:ring-blue-50 transition pr-14"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowCurrentPass(!showCurrentPass)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-xs font-medium text-slate-500 hover:text-slate-700 cursor-pointer"
+                >
+                  {showCurrentPass ? 'Hide' : 'Show'}
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* New Password */}
           <div className="space-y-1">
             <label htmlFor="newPassword" className="block text-xs font-semibold text-slate-700">
-              New Password *
+              {isGoogleUser ? 'Set Password *' : 'New Password *'}
             </label>
             <div className="relative">
               <input
@@ -383,7 +396,7 @@ export default function AccountSettingsView({ role }: AccountSettingsViewProps) 
           {/* Confirm New Password */}
           <div className="space-y-1">
             <label htmlFor="confirmPassword" className="block text-xs font-semibold text-slate-700">
-              Confirm New Password *
+              {isGoogleUser ? 'Confirm Password *' : 'Confirm New Password *'}
             </label>
             <input
               id="confirmPassword"
@@ -391,7 +404,7 @@ export default function AccountSettingsView({ role }: AccountSettingsViewProps) 
               required
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Re-enter new password"
+              placeholder="Re-enter password"
               className="block w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-xs sm:text-sm focus:bg-white focus:outline-none focus:border-[#146BFF] focus:ring-3 focus:ring-blue-50 transition"
             />
           </div>
@@ -402,7 +415,13 @@ export default function AccountSettingsView({ role }: AccountSettingsViewProps) 
               disabled={isChangingPass}
               className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs sm:text-sm font-semibold rounded-xl shadow-sm transition disabled:opacity-60 cursor-pointer"
             >
-              {isChangingPass ? 'Updating Password...' : 'Update Password'}
+              {isChangingPass
+                ? isGoogleUser
+                  ? 'Setting Password...'
+                  : 'Updating Password...'
+                : isGoogleUser
+                ? 'Set Account Password'
+                : 'Update Password'}
             </button>
           </div>
         </form>
