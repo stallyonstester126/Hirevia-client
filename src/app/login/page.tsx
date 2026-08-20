@@ -6,6 +6,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useAuth } from '../../context/AuthContext'
 import { EUserRoles } from '../../types'
+import GoogleRoleModal from '../../components/GoogleRoleModal'
 
 export default function LoginPage() {
   const { login, user, isAuthenticated, isLoading } = useAuth()
@@ -18,6 +19,7 @@ export default function LoginPage() {
   const [submitError, setSubmitError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
+  const [showGoogleRoleModal, setShowGoogleRoleModal] = useState(false)
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -39,13 +41,18 @@ export default function LoginPage() {
     }
   }, [isAuthenticated, user, router])
 
-  const handleGoogleSignIn = () => {
+  const handleGoogleBtnClick = () => {
+    setShowGoogleRoleModal(true)
+  }
+
+  const handleRoleSelectedForGoogle = (selectedRole: EUserRoles) => {
+    setShowGoogleRoleModal(false)
     setIsGoogleLoading(true)
     const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/v1'
     const baseApiUrl = rawApiUrl.endsWith('/v1')
       ? rawApiUrl
       : `${rawApiUrl.replace(/\/+$/, '')}/v1`
-    window.location.href = `${baseApiUrl}/auth/google`
+    window.location.href = `${baseApiUrl}/auth/google?role=${selectedRole}`
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -304,7 +311,7 @@ export default function LoginPage() {
             <div>
               <button
                 type="button"
-                onClick={handleGoogleSignIn}
+                onClick={handleGoogleBtnClick}
                 disabled={isGoogleLoading}
                 className="w-full flex items-center justify-center gap-2.5 py-2.5 px-4 border border-slate-200 hover:border-slate-300 rounded-xl bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs sm:text-sm shadow-sm transition duration-150 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
               >
@@ -359,6 +366,13 @@ export default function LoginPage() {
         </div>
 
       </div>
+
+      {/* Role Selection Modal for Google Sign-In */}
+      <GoogleRoleModal
+        isOpen={showGoogleRoleModal}
+        onClose={() => setShowGoogleRoleModal(false)}
+        onSelectRole={handleRoleSelectedForGoogle}
+      />
     </div>
   )
 }
