@@ -10,11 +10,12 @@ function ResetPasswordForm() {
   const searchParams = useSearchParams()
   const urlToken = searchParams.get('token') || ''
   const urlCode = searchParams.get('code') || ''
-  const urlEmail = searchParams.get('email') || ''
 
+  // Step state: 1 = Enter OTP, 2 = Set New Password, 3 = Success
+  const [step, setStep] = useState<1 | 2 | 3>(1)
   const [token, setToken] = useState(urlToken)
-  const [email, setEmail] = useState(urlEmail)
   const [code, setCode] = useState(urlCode)
+
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -22,23 +23,38 @@ function ResetPasswordForm() {
 
   const [isLoading, setIsLoading] = useState(false)
   const [validationError, setValidationError] = useState('')
-  const [success, setSuccess] = useState(false)
   const [successMsg, setSuccessMsg] = useState('')
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Step 1: Verify 6-digit OTP Code
+  const handleVerifyCode = async (e: React.FormEvent) => {
     e.preventDefault()
     setValidationError('')
 
-    // Validation: user must provide either token OR (email + 6-digit code)
-    if (!token && (!email || !code)) {
-      setValidationError('Please provide either your Reset Token or your Email and 6-Digit Verification Code (OTP).')
+    const cleanCode = code.trim()
+    if (!cleanCode || cleanCode.length !== 6) {
+      setValidationError('Please enter a valid 6-digit verification code.')
       return
     }
 
-    if (code && code.trim().length !== 6) {
-      setValidationError('Verification code must be exactly 6 digits.')
-      return
+    setIsLoading(true)
+    try {
+      const res = await apiClient.post<any>('/verify-reset-code', { code: cleanCode })
+      if (res.success) {
+        setStep(2)
+      } else {
+        setValidationError(res.message || 'Invalid verification code. Please check your email or request a new one.')
+      }
+    } catch (err: any) {
+      setValidationError(err.message || 'Verification code is invalid or has expired. Please request a new code.')
+    } finally {
+      setIsLoading(false)
     }
+  }
+
+  // Step 2: Set New Password
+  const handleSetNewPassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setValidationError('')
 
     if (!password) {
       setValidationError('Please enter your new password.')
@@ -64,20 +80,19 @@ function ResetPasswordForm() {
       const payload: Record<string, any> = {
         newPassword: password,
       }
-      if (token) payload.token = token.trim()
-      if (email) payload.email = email.trim()
       if (code) payload.code = code.trim()
+      if (token) payload.token = token.trim()
 
       const res = await apiClient.post<any>('/reset-password', payload)
 
       if (res.success) {
         setSuccessMsg(res.message || 'Your password has been reset successfully!')
-        setSuccess(true)
+        setStep(3)
       } else {
-        setValidationError(res.message || 'Failed to reset password. Please try again or request a new reset link.')
+        setValidationError(res.message || 'Failed to reset password. Please try again.')
       }
     } catch (err: any) {
-      setValidationError(err.message || 'Failed to reset password. The link or verification code may have expired.')
+      setValidationError(err.message || 'Failed to reset password. The code or link may have expired.')
     } finally {
       setIsLoading(false)
     }
@@ -85,102 +100,107 @@ function ResetPasswordForm() {
 
   return (
     <div className="max-w-md w-full space-y-8 bg-slate-900/80 backdrop-blur-xl p-8 sm:p-10 rounded-3xl border border-slate-800 shadow-2xl relative z-10 text-center">
-      {/* Header */}
-      <div>
-        <div className="w-14 h-14 mx-auto rounded-2xl bg-blue-600/10 border border-blue-500/20 text-blue-400 flex items-center justify-center mb-5 shadow-inner">
-          <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-            />
-          </svg>
-        </div>
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-          Reset Your Password
-        </h1>
-        <p className="mt-2 text-sm text-slate-400">
-          Enter your 6-digit verification code and set your new account password.
-        </p>
-      </div>
-
-      {validationError && (
-        <div className="bg-red-500/10 border border-red-500/30 p-4 rounded-xl text-sm text-red-400 text-left flex items-start gap-3 animate-fadeIn">
-          <svg className="w-5 h-5 text-red-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <span>{validationError}</span>
-        </div>
-      )}
-
-      {success ? (
+      {/* STEP 1: Enter & Verify 6-digit OTP code */}
+      {step === 1 && (
         <div className="space-y-6 animate-fadeIn">
-          <div className="bg-emerald-500/10 border border-emerald-500/30 p-6 rounded-2xl text-left space-y-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+          <div>
+            <div className="w-14 h-14 mx-auto rounded-2xl bg-blue-600/10 border border-blue-500/20 text-blue-400 flex items-center justify-center mb-5 shadow-inner">
+              <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
               </svg>
             </div>
-            <h3 className="font-bold text-white text-base">Password Updated!</h3>
-            <p className="text-xs sm:text-sm text-slate-300">
-              {successMsg || 'Your password has been successfully reset. You can now use your new password to log in.'}
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+              Enter Verification Code
+            </h1>
+            <p className="mt-2 text-sm text-slate-400">
+              Enter the 6-digit OTP code sent to your email address.
             </p>
           </div>
-          <div className="pt-2">
-            <Link
-              href="/login"
-              className="w-full flex items-center justify-center py-3.5 px-4 border border-transparent text-sm font-semibold rounded-xl text-white bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-600/25 transition-all duration-150"
-            >
-              Sign In with New Password →
-            </Link>
-          </div>
-        </div>
-      ) : (
-        <form className="mt-6 space-y-5" onSubmit={handleSubmit}>
-          <div className="space-y-4 text-left">
-            {/* 6-Digit OTP / Verification Code */}
-            <div>
-              <label htmlFor="code" className="block text-xs font-semibold text-slate-300 mb-2 uppercase tracking-wider">
-                6-Digit Verification Code (OTP)
+
+          {validationError && (
+            <div className="bg-red-500/10 border border-red-500/30 p-4 rounded-xl text-sm text-red-400 text-left flex items-start gap-3 animate-fadeIn">
+              <svg className="w-5 h-5 text-red-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>{validationError}</span>
+            </div>
+          )}
+
+          <form className="space-y-5" onSubmit={handleVerifyCode}>
+            <div className="text-left space-y-1.5">
+              <label htmlFor="code" className="block text-xs font-semibold text-slate-300 uppercase tracking-wider text-center">
+                6-Digit OTP Code
               </label>
               <input
                 id="code"
                 name="code"
                 type="text"
                 maxLength={6}
+                autoFocus
+                required
                 value={code}
                 onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
-                className="appearance-none block w-full px-4 py-3 bg-slate-950/60 border border-slate-700/80 rounded-xl placeholder-slate-500 text-white font-mono text-center tracking-widest text-lg font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-150 shadow-inner"
+                className="appearance-none block w-full px-4 py-3.5 bg-slate-950/60 border border-slate-700/80 rounded-xl placeholder-slate-500 text-white font-mono text-center tracking-[0.35em] text-2xl font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-150 shadow-inner"
                 placeholder="123456"
               />
-              <p className="mt-1 text-[11px] text-slate-400 text-center">
-                Enter the 6-digit code received in your password reset email.
+              <p className="text-[11px] text-slate-400 text-center pt-1">
+                Please check your inbox or spam folder for your 6-digit code.
               </p>
             </div>
 
-            {/* Email Field (Shown if token not in URL, to support email + OTP verification) */}
-            {!token && (
-              <div>
-                <label htmlFor="email" className="block text-xs font-semibold text-slate-300 mb-2 uppercase tracking-wider">
-                  Account Email
-                </label>
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="appearance-none block w-full px-4 py-3 bg-slate-950/60 border border-slate-700/80 rounded-xl placeholder-slate-500 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm shadow-inner"
-                  placeholder="name@example.com"
-                />
-              </div>
-            )}
+            <div className="space-y-3 pt-2">
+              <button
+                type="submit"
+                disabled={isLoading || code.trim().length !== 6}
+                className="w-full flex items-center justify-center py-3.5 px-4 border border-transparent text-sm font-semibold rounded-xl text-white bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-600/25 transition-all duration-150 disabled:opacity-50 cursor-pointer"
+              >
+                {isLoading ? <LoadingSpinner /> : 'Verify Code →'}
+              </button>
 
+              <Link
+                href="/forgot-password"
+                className="w-full flex items-center justify-center py-2.5 text-xs font-semibold text-slate-400 hover:text-slate-200 transition-colors"
+              >
+                ← Request a new code
+              </Link>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* STEP 2: Modal / Screen to Enter New Password */}
+      {step === 2 && (
+        <div className="space-y-6 animate-fadeIn">
+          <div>
+            <div className="w-14 h-14 mx-auto rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center mb-5 shadow-inner">
+              <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+              </svg>
+            </div>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold rounded-full mb-2">
+              <span>✓ Code Verified</span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+              Create New Password
+            </h1>
+            <p className="mt-1.5 text-sm text-slate-400">
+              Enter and confirm your new secure password.
+            </p>
+          </div>
+
+          {validationError && (
+            <div className="bg-red-500/10 border border-red-500/30 p-4 rounded-xl text-sm text-red-400 text-left flex items-start gap-3 animate-fadeIn">
+              <svg className="w-5 h-5 text-red-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>{validationError}</span>
+            </div>
+          )}
+
+          <form className="space-y-4 text-left" onSubmit={handleSetNewPassword}>
             {/* New Password */}
             <div>
-              <label htmlFor="password" className="block text-xs font-semibold text-slate-300 mb-2 uppercase tracking-wider">
+              <label htmlFor="password" className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider">
                 New Password
               </label>
               <div className="relative">
@@ -189,6 +209,7 @@ function ResetPasswordForm() {
                   name="password"
                   type={showPassword ? 'text' : 'password'}
                   required
+                  autoFocus
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="appearance-none block w-full px-4 py-3 bg-slate-950/60 border border-slate-700/80 rounded-xl placeholder-slate-500 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-150 text-sm shadow-inner pr-11"
@@ -212,13 +233,13 @@ function ResetPasswordForm() {
                 </button>
               </div>
               <p className="mt-1 text-[11px] text-slate-400">
-                Must be 8-24 characters with uppercase, lowercase, number, and symbol.
+                8-24 characters with uppercase, lowercase, number, and symbol.
               </p>
             </div>
 
             {/* Confirm New Password */}
             <div>
-              <label htmlFor="confirm-password" className="block text-xs font-semibold text-slate-300 mb-2 uppercase tracking-wider">
+              <label htmlFor="confirm-password" className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider">
                 Confirm New Password
               </label>
               <div className="relative">
@@ -250,24 +271,51 @@ function ResetPasswordForm() {
                 </button>
               </div>
             </div>
-          </div>
 
-          <div className="space-y-3 pt-2">
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full flex items-center justify-center py-3.5 px-4 border border-transparent text-sm font-semibold rounded-xl text-white bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-600/25 transition-all duration-150 disabled:opacity-50 cursor-pointer"
-            >
-              {isLoading ? <LoadingSpinner /> : 'Set New Password →'}
-            </button>
+            <div className="space-y-3 pt-3">
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full flex items-center justify-center py-3.5 px-4 border border-transparent text-sm font-semibold rounded-xl text-white bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-600/25 transition-all duration-150 disabled:opacity-50 cursor-pointer"
+              >
+                {isLoading ? <LoadingSpinner /> : 'Save New Password & Finish →'}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => { setStep(1); setValidationError(''); }}
+                className="w-full text-xs text-slate-400 hover:text-slate-200 transition-colors py-1 cursor-pointer"
+              >
+                ← Back to verification code
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* STEP 3: Success Confirmation */}
+      {step === 3 && (
+        <div className="space-y-6 animate-fadeIn">
+          <div className="bg-emerald-500/10 border border-emerald-500/30 p-6 rounded-2xl text-left space-y-3">
+            <div className="w-12 h-12 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+              <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h3 className="font-bold text-white text-lg">Password Changed Successfully!</h3>
+            <p className="text-xs sm:text-sm text-slate-300">
+              {successMsg || 'Your new password is now active. You can immediately sign in to your Hirevia account.'}
+            </p>
+          </div>
+          <div className="pt-2">
             <Link
               href="/login"
-              className="w-full flex items-center justify-center py-3 px-4 border border-slate-800 text-sm font-semibold rounded-xl text-slate-300 hover:text-white bg-slate-950/40 hover:bg-slate-800/60 transition-colors"
+              className="w-full flex items-center justify-center py-3.5 px-4 border border-transparent text-sm font-semibold rounded-xl text-white bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-600/25 transition-all duration-150"
             >
-              Cancel and Return to Sign In
+              Sign In to Your Account →
             </Link>
           </div>
-        </form>
+        </div>
       )}
     </div>
   )

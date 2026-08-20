@@ -115,7 +115,7 @@ export default function ForgotPasswordPage() {
 
             <div className="space-y-3 pt-2">
               <Link
-                href={`/reset-password?email=${encodeURIComponent(email)}`}
+                href="/reset-password"
                 className="w-full flex items-center justify-center py-3.5 px-4 border border-transparent text-sm font-semibold rounded-xl text-white bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-600/25 transition-all duration-150"
               >
                 Enter OTP Code & Reset Password →
