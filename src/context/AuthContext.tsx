@@ -32,17 +32,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       setIsLoading(true)
 
-      // 1. Capture OAuth token from URL if redirected from Google OAuth
+      // 1. Capture OAuth token from URL ONLY if redirected from Google OAuth (not on reset/confirmation/etc.)
       if (typeof window !== 'undefined') {
-        const urlParams = new URLSearchParams(window.location.search)
-        const tokenParam = urlParams.get('token') || urlParams.get('auth_token')
-        if (tokenParam) {
-          setAuthToken(tokenParam)
-          urlParams.delete('token')
-          urlParams.delete('auth_token')
-          const remainingQuery = urlParams.toString()
-          const newUrl = window.location.pathname + (remainingQuery ? `?${remainingQuery}` : '')
-          window.history.replaceState({}, document.title, newUrl)
+        const path = window.location.pathname
+        const isResetOrConfirmRoute =
+          path.startsWith('/reset-password') ||
+          path.startsWith('/forgot-password') ||
+          path.startsWith('/confirmation') ||
+          path.startsWith('/interview') ||
+          path.startsWith('/test')
+
+        if (!isResetOrConfirmRoute) {
+          const urlParams = new URLSearchParams(window.location.search)
+          const tokenParam = urlParams.get('token') || urlParams.get('auth_token')
+          if (tokenParam) {
+            setAuthToken(tokenParam)
+            urlParams.delete('token')
+            urlParams.delete('auth_token')
+            const remainingQuery = urlParams.toString()
+            const newUrl = window.location.pathname + (remainingQuery ? `?${remainingQuery}` : '')
+            window.history.replaceState({}, document.title, newUrl)
+          }
         }
       }
 
@@ -65,7 +75,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const handleUnauthorized = () => {
       clearAuth()
       if (typeof window !== 'undefined') {
-        router.push('/login')
+        const path = window.location.pathname
+        const isPublicPage =
+          path === '/' ||
+          path.startsWith('/login') ||
+          path.startsWith('/register') ||
+          path.startsWith('/forgot-password') ||
+          path.startsWith('/reset-password') ||
+          path.startsWith('/confirmation') ||
+          path.startsWith('/interview') ||
+          path.startsWith('/test') ||
+          path.startsWith('/verify-email')
+
+        if (!isPublicPage) {
+          router.push('/login')
+        }
       }
     }
 

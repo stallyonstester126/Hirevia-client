@@ -107,9 +107,23 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
       const errorMsg = responseData?.message || response.statusText || 'An error occurred'
       const errorStatus = responseData?.statusCode || response.status
 
-      // Handle 401: backend has no refresh endpoint, redirect directly to /login
+      // Handle 401: backend has no refresh endpoint, redirect directly to /login on protected pages
       if (errorStatus === 401 && typeof window !== 'undefined') {
-        window.dispatchEvent(new Event('auth-unauthorized'))
+        const path = window.location.pathname
+        const isPublicPage =
+          path === '/' ||
+          path.startsWith('/login') ||
+          path.startsWith('/register') ||
+          path.startsWith('/forgot-password') ||
+          path.startsWith('/reset-password') ||
+          path.startsWith('/confirmation') ||
+          path.startsWith('/interview') ||
+          path.startsWith('/test') ||
+          path.startsWith('/verify-email')
+
+        if (!isPublicPage) {
+          window.dispatchEvent(new Event('auth-unauthorized'))
+        }
       }
 
       throw new ApiError(errorMsg, errorStatus, responseData?.data)
