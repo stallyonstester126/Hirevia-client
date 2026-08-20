@@ -32,12 +32,16 @@ export default function ConfirmationModal({
     setMounted(true)
   }, [])
 
+  // Lock background body and html scroll when modal is open to ensure 100% full-screen blur coverage
   useEffect(() => {
     if (isOpen) {
-      const originalOverflow = document.body.style.overflow
+      const originalBodyOverflow = document.body.style.overflow
+      const originalHtmlOverflow = document.documentElement.style.overflow
       document.body.style.overflow = 'hidden'
+      document.documentElement.style.overflow = 'hidden'
       return () => {
-        document.body.style.overflow = originalOverflow
+        document.body.style.overflow = originalBodyOverflow
+        document.documentElement.style.overflow = originalHtmlOverflow
       }
     }
   }, [isOpen])
@@ -83,19 +87,27 @@ export default function ConfirmationModal({
   const { iconBg, btnBg, icon } = getVariantStyles()
 
   return createPortal(
-    <div className="fixed inset-0 top-0 left-0 right-0 bottom-0 w-screen h-screen z-[99999] flex items-center justify-center p-4 animate-fadeIn">
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 overflow-y-auto">
       {/* Backdrop with full-screen blur */}
       <div
-        className="fixed inset-0 bg-slate-950/75 transition-opacity"
+        className="fixed inset-0 w-full h-full bg-slate-950/80 transition-opacity"
         style={{
-          backdropFilter: 'blur(12px)',
-          WebkitBackdropFilter: 'blur(12px)',
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          width: '100vw',
+          height: '100vh',
+          minHeight: '100dvh',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
         }}
         onClick={isLoading ? undefined : onCancel}
       />
 
       {/* Foreground Modal Dialog Card */}
-      <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-slate-200/80 relative z-10 text-center space-y-5 animate-scaleIn">
+      <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-slate-200/80 relative z-10 text-center space-y-5 my-auto">
         {/* Icon */}
         <div className={`w-14 h-14 rounded-2xl ${iconBg} flex items-center justify-center mx-auto shadow-sm`}>
           {icon}

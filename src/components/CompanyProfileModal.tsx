@@ -36,13 +36,16 @@ export default function CompanyProfileModal({
     setMounted(true)
   }, [])
 
-  // Lock background body scroll when modal is open to ensure 100% full-screen blur coverage
+  // Lock background body and html scroll when modal is open to ensure 100% full-screen blur coverage
   useEffect(() => {
     if (isOpen) {
-      const originalOverflow = document.body.style.overflow
+      const originalBodyOverflow = document.body.style.overflow
+      const originalHtmlOverflow = document.documentElement.style.overflow
       document.body.style.overflow = 'hidden'
+      document.documentElement.style.overflow = 'hidden'
       return () => {
-        document.body.style.overflow = originalOverflow
+        document.body.style.overflow = originalBodyOverflow
+        document.documentElement.style.overflow = originalHtmlOverflow
       }
     }
   }, [isOpen])
@@ -86,19 +89,27 @@ export default function CompanyProfileModal({
   }
 
   return createPortal(
-    <div className="fixed inset-0 top-0 left-0 right-0 bottom-0 w-screen h-screen z-[99998] flex items-center justify-center p-3 sm:p-4 md:p-6 animate-fadeIn">
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-4 md:p-6 overflow-y-auto">
       {/* Dedicated Backdrop Layer with guaranteed full-screen blur */}
       <div
-        className="fixed inset-0 bg-slate-950/75 transition-opacity"
+        className="fixed inset-0 w-full h-full bg-slate-950/80 transition-opacity"
         style={{
-          backdropFilter: 'blur(12px)',
-          WebkitBackdropFilter: 'blur(12px)',
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          width: '100vw',
+          height: '100vh',
+          minHeight: '100dvh',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
         }}
         onClick={onClose}
       />
 
       {/* Sharp Foreground Modal Card */}
-      <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] sm:max-h-[85vh] flex flex-col shadow-2xl border border-slate-200/80 overflow-hidden relative z-10 text-left">
+      <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] sm:max-h-[85vh] flex flex-col shadow-2xl border border-slate-200/80 overflow-hidden relative z-10 text-left my-auto">
         {/* Pinned Header */}
         <div className="p-5 sm:p-6 sm:pb-4 shrink-0 flex items-start justify-between gap-4 border-b border-slate-100 relative bg-white">
           <div className="flex items-start gap-3.5">
