@@ -221,6 +221,49 @@ export default function JobApplicantsPage() {
                           </>
                         )}
                       </p>
+
+                      {/* Evaluation Highlights Badges */}
+                      <div className="flex items-center gap-2 pt-1 flex-wrap">
+                        {/* Auto-Screening / AI Match */}
+                        {(app.matchScore?.score !== undefined || app.autoScreeningScore !== undefined) && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[11px] font-bold bg-blue-50 text-[#146BFF] border border-blue-200">
+                            <span>🎯 Match:</span>
+                            <span>{app.matchScore?.score ?? app.autoScreeningScore}/100</span>
+                          </span>
+                        )}
+
+                        {/* Assessment */}
+                        {app.testInvite && (
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[11px] font-bold border ${
+                            app.testInvite.status === 'COMPLETED'
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              : 'bg-amber-50 text-amber-700 border-amber-200'
+                          }`}>
+                            <span>📝 Assessment:</span>
+                            <span>
+                              {app.testInvite.assessmentScore !== null && app.testInvite.assessmentScore !== undefined
+                                ? `${app.testInvite.assessmentScore}/100`
+                                : app.testInvite.status}
+                            </span>
+                          </span>
+                        )}
+
+                        {/* Voice Interview */}
+                        {app.interviewInvite && (
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[11px] font-bold border ${
+                            app.interviewInvite.status === 'COMPLETED'
+                              ? 'bg-purple-50 text-purple-700 border-purple-200'
+                              : 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                          }`}>
+                            <span>🎙️ Voice Interview:</span>
+                            <span>
+                              {app.interviewInvite.interviewScore !== null && app.interviewInvite.interviewScore !== undefined
+                                ? `${app.interviewInvite.interviewScore}/100`
+                                : app.interviewInvite.status}
+                            </span>
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
 

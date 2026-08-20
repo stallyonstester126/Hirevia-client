@@ -259,6 +259,9 @@ export interface IApplication {
   autoScreeningScore?: number | null
   autoScreeningRationale?: string | null
   advancedBy?: 'SYSTEM_AI' | 'COMPANY' | null
+  testInvite?: ITestInvite | any | null
+  interviewInvite?: IInterviewInvite | any | null
+  matchScore?: IJobMatchScore | null
   createdAt?: string
   updatedAt?: string
 }
