@@ -143,24 +143,35 @@ describe('JobDetailPage Apply Flow', () => {
     expect(await screen.findByText(/Application submitted successfully!/i)).toBeInTheDocument()
   })
 
-  it('displays duplicate application rejection message when user has already applied', async () => {
-    vi.mocked(apiClient.post).mockRejectedValue(
-      new ApiError('You have already applied for this job', 409)
-    )
+  it('automatically detects when user has already applied and renders professional Already Applied state', async () => {
+    vi.mocked(apiClient.get).mockImplementation((endpoint: string) => {
+      if (endpoint === '/jobs/job-123') {
+        return Promise.resolve({ success: true, statusCode: 200, message: 'Success', data: mockJob })
+      }
+      if (endpoint === '/seeker/resumes') {
+        return Promise.resolve({ success: true, statusCode: 200, message: 'Success', data: mockResumes })
+      }
+      if (endpoint === '/jobs/job-123/application-status') {
+        return Promise.resolve({
+          success: true,
+          statusCode: 200,
+          message: 'Success',
+          data: {
+            hasApplied: true,
+            application: { _id: 'app-existing-123', status: 'SUBMITTED', appliedAt: '2026-08-18T10:00:00.000Z' },
+          },
+        })
+      }
+      return Promise.reject(new Error('Endpoint not found'))
+    })
 
     render(<JobDetailPage />)
-    await screen.findByText('Senior Frontend Engineer')
 
-    const applyButton = screen.getAllByRole('button', { name: /Apply Now/i })[0]
-    fireEvent.click(applyButton)
-
-    await screen.findByText(/Apply to Senior Frontend Engineer/i)
-
-    const submitButton = screen.getByRole('button', { name: /Submit Application/i })
-    fireEvent.click(submitButton)
-
-    expect(
-      await screen.findByText(/You have already applied for this job/i)
-    ).toBeInTheDocument()
+    expect(await screen.findByText('Senior Frontend Engineer')).toBeInTheDocument()
+    const appliedBadges = await screen.findAllByText(/Already Applied/i)
+    expect(appliedBadges.length).toBeGreaterThan(0)
+    expect(screen.getByRole('link', { name: /Track Status →/i })).toBeInTheDocument()
+    expect(screen.getByText(/Application Submitted ✓/i)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Track in My Applications →/i })).toBeInTheDocument()
   })
 })

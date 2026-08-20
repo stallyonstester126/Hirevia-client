@@ -29,15 +29,60 @@ export default function JobDetailPage() {
   const [applyErrorMsg, setApplyErrorMsg] = useState('')
   const [applySuccessMsg, setApplySuccessMsg] = useState('')
   const [hasAppliedAlready, setHasAppliedAlready] = useState(false)
+  const [existingApplication, setExistingApplication] = useState<{
+    _id: string
+    status: string
+    appliedAt?: string
+  } | null>(null)
+  const [isCheckingApplied, setIsCheckingApplied] = useState(false)
 
   useEffect(() => {
     if (jobId) {
       fetchJobDetails()
       if (isAuthenticated && user?.role === EUserRoles.SEEKER) {
         fetchResumes()
+        checkApplicationStatus()
       }
     }
   }, [jobId, isAuthenticated, user])
+
+  const checkApplicationStatus = async () => {
+    setIsCheckingApplied(true)
+    try {
+      const res = await apiClient.get<{ hasApplied: boolean; application?: any }>(`/jobs/${jobId}/application-status`)
+      if (res.success && res.data) {
+        if (res.data.hasApplied) {
+          setHasAppliedAlready(true)
+          if (res.data.application) {
+            setExistingApplication(res.data.application)
+          }
+        }
+      }
+    } catch {
+      // Fallback: check seeker applications list
+      try {
+        const appsRes = await apiClient.get<any>('/seeker/applications', { params: { limit: 100 } })
+        if (appsRes.success && appsRes.data?.applications) {
+          const matchingApp = appsRes.data.applications.find((app: any) => {
+            const jId = typeof app.jobId === 'object' ? app.jobId?._id : app.jobId
+            return jId === jobId
+          })
+          if (matchingApp) {
+            setHasAppliedAlready(true)
+            setExistingApplication({
+              _id: matchingApp._id,
+              status: matchingApp.status,
+              appliedAt: matchingApp.appliedAt || matchingApp.createdAt,
+            })
+          }
+        }
+      } catch {
+        // Fallback ignored
+      }
+    } finally {
+      setIsCheckingApplied(false)
+    }
+  }
 
   const fetchJobDetails = async () => {
     setLoading(true)
@@ -91,7 +136,7 @@ export default function JobDetailPage() {
     setApplySuccessMsg('')
 
     try {
-      const res = await apiClient.post(`/jobs/${jobId}/apply`, {
+      const res = await apiClient.post<any>(`/jobs/${jobId}/apply`, {
         resumeId: selectedResumeId,
         coverLetter: coverLetter.trim() || undefined,
       })
@@ -99,6 +144,9 @@ export default function JobDetailPage() {
       if (res.success) {
         setApplySuccessMsg('Application submitted successfully!')
         setHasAppliedAlready(true)
+        if (res.data?._id) {
+          setExistingApplication(res.data)
+        }
         setTimeout(() => {
           setApplyModalOpen(false)
           router.push('/seeker/applications')
@@ -192,33 +240,54 @@ export default function JobDetailPage() {
             </p>
           </div>
 
-          {/* Apply Button */}
+          {/* Apply Button / Already Applied State */}
           <div className="shrink-0 flex flex-col items-start sm:items-end gap-2">
-            <button
-              type="button"
-              onClick={handleOpenApplyModal}
-              disabled={!isPublished || hasAppliedAlready}
-              className={`px-6 py-3 text-sm font-semibold rounded-xl shadow-md transition flex items-center gap-2 cursor-pointer ${
-                hasAppliedAlready
-                  ? 'bg-slate-100 text-slate-500 border border-slate-200 cursor-not-allowed'
-                  : isPublished
-                  ? 'bg-[#146BFF] hover:bg-[#0E5CE8] text-white shadow-blue-500/20'
-                  : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-              }`}
-            >
-              {hasAppliedAlready ? (
-                'Already Applied ✓'
-              ) : isPublished ? (
-                <>
-                  Apply Now
-                  <span>→</span>
-                </>
-              ) : (
-                'Applications Closed'
-              )}
-            </button>
-            {!isPublished && (
-              <span className="text-xs text-rose-500">This role is no longer accepting new applicants.</span>
+            {hasAppliedAlready ? (
+              <div className="flex flex-col sm:items-end gap-1.5 animate-fadeIn">
+                <div className="flex items-center gap-2">
+                  <div className="px-4 py-2.5 bg-emerald-50 text-emerald-700 border border-emerald-200/80 text-xs sm:text-sm font-semibold rounded-xl flex items-center gap-1.5 shadow-xs">
+                    <svg className="w-4 h-4 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>Already Applied</span>
+                  </div>
+                  <Link
+                    href={existingApplication?._id ? `/seeker/applications/${existingApplication._id}` : '/seeker/applications'}
+                    className="px-4 py-2.5 bg-[#146BFF] hover:bg-[#0E5CE8] text-white text-xs sm:text-sm font-semibold rounded-xl shadow-xs transition shadow-blue-500/20 flex items-center gap-1"
+                  >
+                    Track Status →
+                  </Link>
+                </div>
+                <p className="text-[11px] text-slate-500 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
+                  Application submitted {existingApplication?.appliedAt ? `on ${new Date(existingApplication.appliedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}` : 'to this opening'}
+                </p>
+              </div>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={handleOpenApplyModal}
+                  disabled={!isPublished || isCheckingApplied}
+                  className={`px-6 py-3 text-sm font-semibold rounded-xl shadow-md transition flex items-center gap-2 cursor-pointer ${
+                    isPublished
+                      ? 'bg-[#146BFF] hover:bg-[#0E5CE8] text-white shadow-blue-500/20'
+                      : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                  }`}
+                >
+                  {isPublished ? (
+                    <>
+                      Apply Now
+                      <span>→</span>
+                    </>
+                  ) : (
+                    'Applications Closed'
+                  )}
+                </button>
+                {!isPublished && (
+                  <span className="text-xs text-rose-500">This role is no longer accepting new applicants.</span>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -306,21 +375,43 @@ export default function JobDetailPage() {
             </div>
           )}
 
-          {/* Apply CTA Card */}
-          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-3xl border border-blue-100 space-y-3 text-center">
-            <h3 className="text-base font-bold text-slate-900">Interested in this role?</h3>
-            <p className="text-xs text-slate-600">
-              Submit your resume directly to the hiring team with one click.
-            </p>
-            <button
-              type="button"
-              onClick={handleOpenApplyModal}
-              disabled={!isPublished || hasAppliedAlready}
-              className="w-full py-3 bg-[#146BFF] hover:bg-[#0E5CE8] text-white text-sm font-semibold rounded-xl shadow-sm transition disabled:opacity-60 cursor-pointer"
-            >
-              {hasAppliedAlready ? 'Application Submitted' : 'Apply Now'}
-            </button>
-          </div>
+          {/* Apply / Status CTA Card */}
+          {hasAppliedAlready ? (
+            <div className="bg-emerald-50/70 p-6 rounded-3xl border border-emerald-200/80 space-y-3.5 text-center animate-fadeIn shadow-xs">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto shadow-xs">
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-base font-bold text-emerald-950">Application Submitted ✓</h3>
+                <p className="text-xs text-emerald-800 leading-relaxed">
+                  You have already applied for this opening. You can monitor your application review and interview status anytime.
+                </p>
+              </div>
+              <Link
+                href={existingApplication?._id ? `/seeker/applications/${existingApplication._id}` : '/seeker/applications'}
+                className="inline-flex items-center justify-center w-full py-3 bg-[#146BFF] hover:bg-[#0E5CE8] text-white text-sm font-semibold rounded-xl shadow-md transition shadow-blue-500/20"
+              >
+                Track in My Applications →
+              </Link>
+            </div>
+          ) : (
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-3xl border border-blue-100 space-y-3 text-center">
+              <h3 className="text-base font-bold text-slate-900">Interested in this role?</h3>
+              <p className="text-xs text-slate-600">
+                Submit your resume directly to the hiring team with one click.
+              </p>
+              <button
+                type="button"
+                onClick={handleOpenApplyModal}
+                disabled={!isPublished || isCheckingApplied}
+                className="w-full py-3 bg-[#146BFF] hover:bg-[#0E5CE8] text-white text-sm font-semibold rounded-xl shadow-sm transition disabled:opacity-60 cursor-pointer"
+              >
+                {isPublished ? 'Apply Now →' : 'Applications Closed'}
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
