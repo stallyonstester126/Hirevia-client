@@ -25,6 +25,9 @@ export interface IUser {
   consent: boolean
   subscriptionStatus?: 'UNPAID' | 'PAID'
   subscriptionPaidAt?: string | null
+  authProvider?: 'local' | 'google'
+  googleId?: string
+  profilePicture?: string | null
   createdAt: string
   updatedAt: string
 }

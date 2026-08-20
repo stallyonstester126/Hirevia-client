@@ -97,6 +97,7 @@ export default function AccountSettingsView({ role }: AccountSettingsViewProps) 
     }
   }
 
+  const activeUser = currentUser || user
   const isGoogleUser = activeUser?.authProvider === 'google'
 
   const handleChangePassword = async (e: React.FormEvent) => {
@@ -159,8 +160,6 @@ export default function AccountSettingsView({ role }: AccountSettingsViewProps) 
       </div>
     )
   }
-
-  const activeUser = currentUser || user
 
   return (
     <div className="space-y-8 max-w-4xl mx-auto pb-12">
