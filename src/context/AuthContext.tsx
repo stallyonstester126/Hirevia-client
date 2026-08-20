@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { IUser, EUserRoles } from '../types'
-import { apiClient, ApiError } from '../lib/api-client'
+import { apiClient, ApiError, setAuthToken, removeAuthToken, getAuthToken } from '../lib/api-client'
 
 interface AuthContextType {
   user: IUser | null
@@ -25,19 +25,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const clearAuth = () => {
     setUser(null)
+    removeAuthToken()
   }
 
   const checkUserSession = async () => {
     try {
       setIsLoading(true)
+
+      // 1. Capture OAuth token from URL if redirected from Google OAuth
+      if (typeof window !== 'undefined') {
+        const urlParams = new URLSearchParams(window.location.search)
+        const tokenParam = urlParams.get('token') || urlParams.get('auth_token')
+        if (tokenParam) {
+          setAuthToken(tokenParam)
+          urlParams.delete('token')
+          urlParams.delete('auth_token')
+          const remainingQuery = urlParams.toString()
+          const newUrl = window.location.pathname + (remainingQuery ? `?${remainingQuery}` : '')
+          window.history.replaceState({}, document.title, newUrl)
+        }
+      }
+
       const response = await apiClient.get<IUser>('/user/me')
       if (response.success && response.data) {
         setUser(response.data)
       } else {
-        setUser(null)
+        clearAuth()
       }
     } catch (error) {
-      setUser(null)
+      clearAuth()
     } finally {
       setIsLoading(false)
     }
@@ -68,10 +84,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(true)
     try {
       const response = await apiClient.post<any>('/login', payload)
-      if (response.success && response.data?.user) {
-        setUser(response.data.user)
+      if (response.success && response.data) {
+        if (response.data.accessToken) {
+          setAuthToken(response.data.accessToken)
+        }
+        if (response.data.user) {
+          setUser(response.data.user)
+        } else {
+          await checkUserSession()
+        }
       } else {
-        // Fallback check session
         await checkUserSession()
       }
     } catch (error) {

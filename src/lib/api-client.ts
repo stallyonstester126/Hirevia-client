@@ -17,6 +17,35 @@ export class ApiError extends Error {
   }
 }
 
+export const AUTH_TOKEN_KEY = 'hirevia_access_token'
+
+export const getAuthToken = (): string | null => {
+  if (typeof window === 'undefined') return null
+  try {
+    return localStorage.getItem(AUTH_TOKEN_KEY)
+  } catch {
+    return null
+  }
+}
+
+export const setAuthToken = (token: string): void => {
+  if (typeof window === 'undefined') return
+  try {
+    localStorage.setItem(AUTH_TOKEN_KEY, token)
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+export const removeAuthToken = (): void => {
+  if (typeof window === 'undefined') return
+  try {
+    localStorage.removeItem(AUTH_TOKEN_KEY)
+  } catch {
+    // Ignore storage errors
+  }
+}
+
 interface RequestOptions extends RequestInit {
   params?: Record<string, string | number | boolean | undefined>
 }
@@ -41,10 +70,16 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
 
   const isFormData = typeof FormData !== 'undefined' && body instanceof FormData
 
+  const token = getAuthToken()
+  const authHeaders: Record<string, string> = token
+    ? { Authorization: `Bearer ${token}` }
+    : {}
+
   const defaultHeaders: HeadersInit = isFormData
-    ? {}
+    ? { ...authHeaders }
     : {
         'Content-Type': 'application/json',
+        ...authHeaders,
       }
 
   const config: RequestInit = {
