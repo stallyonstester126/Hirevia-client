@@ -25,7 +25,6 @@ export default function PublicVoiceInterviewPage() {
 
   const vapiRef = useRef<Vapi | null>(null)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
-  const transcriptEndRef = useRef<HTMLDivElement | null>(null)
 
   // Tracking refs
   const liveMessagesRef = useRef<Array<{ role: 'assistant' | 'user'; text: string }>>([])
@@ -44,11 +43,6 @@ export default function PublicVoiceInterviewPage() {
   useEffect(() => {
     callStateRef.current = callState
   }, [callState])
-
-  // Auto-scroll transcript
-  useEffect(() => {
-    transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [liveMessages])
 
   // Finalize interview handler (called on assistant hangup, timeout, tab violation, or disconnect)
   const finalizeInterview = useCallback(
@@ -454,80 +448,128 @@ export default function PublicVoiceInterviewPage() {
         )}
 
         {callState === 'ACTIVE' && (
-          <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl backdrop-blur-xl space-y-6 flex flex-col h-[600px]">
-            {/* Call Header - No manual finish button */}
-            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
-              <div className="space-y-0.5">
+          <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-6 sm:p-10 shadow-2xl backdrop-blur-xl space-y-8 flex flex-col items-center text-center animate-fadeIn">
+            {/* Call Header */}
+            <div className="w-full flex items-center justify-between border-b border-slate-800 pb-4">
+              <div className="space-y-0.5 text-left">
                 <h2 className="text-base font-bold text-white">{interviewContext?.jobTitle}</h2>
                 <p className="text-xs text-slate-400">{interviewContext?.companyName}</p>
               </div>
 
               <div className="flex items-center gap-3">
-                <div className="px-3.5 py-1.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-full text-xs font-mono font-bold flex items-center gap-2">
+                <div className="px-3.5 py-1.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-full text-xs font-mono font-bold flex items-center gap-2 shadow-xs">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
                   {formatDuration(duration)}
                 </div>
               </div>
             </div>
 
-            {/* Pulsing Visualizer */}
-            <div className="flex flex-col items-center justify-center py-6 space-y-3">
+            {/* AI Voice Visual: Glowing Orb & Dynamic Waveform */}
+            <div className="py-6 flex flex-col items-center justify-center space-y-6">
               <div className="relative flex items-center justify-center">
-                {/* Outer ripple */}
+                {/* Outermost ambient glow aura */}
                 <div
-                  className="absolute w-28 h-28 rounded-full bg-blue-500/20 transition-all duration-300"
+                  className="absolute w-48 h-48 rounded-full bg-blue-500/15 blur-2xl transition-all duration-500 pointer-events-none"
                   style={{
-                    transform: `scale(${1 + (isSpeaking ? volumeLevel * 1.5 : 0.1)})`,
-                    opacity: isSpeaking ? 0.8 : 0.2
+                    transform: `scale(${1 + (isSpeaking ? volumeLevel * 1.8 : 0.15)})`,
+                    opacity: isSpeaking ? 0.9 : 0.35
                   }}
-                ></div>
-                {/* Inner ripple */}
+                />
+
+                {/* Outer pulsing ripple ring */}
                 <div
-                  className="absolute w-20 h-20 rounded-full bg-indigo-500/40 transition-all duration-200"
+                  className="absolute w-40 h-40 rounded-full border border-blue-500/30 bg-blue-500/10 transition-all duration-300 pointer-events-none"
                   style={{
-                    transform: `scale(${1 + (isSpeaking ? volumeLevel * 0.8 : 0.05)})`,
-                    opacity: isSpeaking ? 0.9 : 0.3
+                    transform: `scale(${1 + (isSpeaking ? volumeLevel * 1.2 : 0.08)})`,
+                    opacity: isSpeaking ? 0.85 : 0.3
                   }}
-                ></div>
-                {/* Center mic orb */}
-                <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white text-2xl shadow-xl z-10">
-                  🎙️
+                />
+
+                {/* Inner pulsing ripple ring */}
+                <div
+                  className="absolute w-32 h-32 rounded-full border border-indigo-500/40 bg-indigo-500/20 transition-all duration-200 pointer-events-none"
+                  style={{
+                    transform: `scale(${1 + (isSpeaking ? volumeLevel * 0.7 : 0.04)})`,
+                    opacity: isSpeaking ? 0.95 : 0.4
+                  }}
+                />
+
+                {/* Symmetrical Audio Waveform Bars (Left) */}
+                <div className="absolute -left-16 sm:-left-20 flex items-center gap-1">
+                  {[40, 70, 100, 60, 30].map((h, i) => (
+                    <span
+                      key={i}
+                      className="w-1 bg-gradient-to-t from-blue-600 to-cyan-400 rounded-full transition-all duration-150"
+                      style={{
+                        height: `${Math.max(8, (isSpeaking ? volumeLevel * 30 : 6) * (h / 100))}px`,
+                        opacity: isSpeaking ? 0.9 : 0.25
+                      }}
+                    />
+                  ))}
+                </div>
+
+                {/* Central Mic Orb */}
+                <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-gradient-to-tr from-[#146BFF] via-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-[0_0_40px_rgba(20,107,255,0.45)] border-2 border-blue-300/40 z-10 transform transition-transform duration-200">
+                  <svg className="w-10 h-10 sm:w-12 sm:h-12 text-white drop-shadow-md" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                  </svg>
+                </div>
+
+                {/* Symmetrical Audio Waveform Bars (Right) */}
+                <div className="absolute -right-16 sm:-right-20 flex items-center gap-1">
+                  {[30, 60, 100, 70, 40].map((h, i) => (
+                    <span
+                      key={i}
+                      className="w-1 bg-gradient-to-t from-blue-600 to-cyan-400 rounded-full transition-all duration-150"
+                      style={{
+                        height: `${Math.max(8, (isSpeaking ? volumeLevel * 30 : 6) * (h / 100))}px`,
+                        opacity: isSpeaking ? 0.9 : 0.25
+                      }}
+                    />
+                  ))}
                 </div>
               </div>
 
-              <span className="text-xs font-semibold text-slate-400">
-                {isSpeaking ? 'AI is speaking...' : 'Listening to you...'}
-              </span>
+              {/* Status Headings & Active Pill */}
+              <div className="space-y-2 max-w-sm mx-auto">
+                <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+                  Interview in Progress
+                </h2>
+                <p className="text-xs sm:text-sm text-slate-400">
+                  Your answers are being recorded securely.
+                </p>
+
+                <div className="pt-2">
+                  <span className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                    isSpeaking
+                      ? 'bg-blue-500/15 border-blue-500/30 text-blue-300 shadow-sm'
+                      : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+                  }`}>
+                    <span className={`w-2 h-2 rounded-full ${isSpeaking ? 'bg-blue-400 animate-ping' : 'bg-emerald-400'}`} />
+                    {isSpeaking ? 'AI Interviewer is speaking...' : 'Listening to your response...'}
+                  </span>
+                </div>
+              </div>
             </div>
 
-            {/* Live Transcript Stream */}
-            <div className="flex-1 bg-slate-950/60 rounded-2xl border border-slate-800/80 p-4 overflow-y-auto space-y-3">
-              {liveMessages.length === 0 ? (
-                <div className="h-full flex items-center justify-center text-xs text-slate-500 italic">
-                  Conversation transcript will appear here in real-time...
+            {/* Privacy Information Card */}
+            <div className="w-full max-w-md bg-slate-950/70 border border-slate-800/90 rounded-2xl p-4 sm:p-4.5 flex items-start sm:items-center gap-3.5 shadow-lg shadow-black/30 text-left">
+              <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 text-[#146BFF] flex items-center justify-center shrink-0">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+              </div>
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <h4 className="text-xs font-bold text-slate-200">Secure &amp; Private</h4>
+                  <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded">
+                    Encrypted
+                  </span>
                 </div>
-              ) : (
-                liveMessages.map((msg, idx) => (
-                  <div
-                    key={idx}
-                    className={`flex flex-col ${msg.role === 'assistant' ? 'items-start' : 'items-end'}`}
-                  >
-                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
-                      {msg.role === 'assistant' ? 'AI Interviewer' : 'You'}
-                    </div>
-                    <div
-                      className={`max-w-[85%] rounded-2xl p-3 text-xs leading-relaxed ${
-                        msg.role === 'assistant'
-                          ? 'bg-slate-800 text-slate-200 border border-slate-700'
-                          : 'bg-blue-600 text-white'
-                      }`}
-                    >
-                      {msg.text}
-                    </div>
-                  </div>
-                ))
-              )}
-              <div ref={transcriptEndRef} />
+                <p className="text-[11px] sm:text-xs text-slate-400 leading-relaxed">
+                  Your responses are being recorded and will be used for evaluation purposes only.
+                </p>
+              </div>
             </div>
           </div>
         )}

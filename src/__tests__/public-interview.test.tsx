@@ -99,8 +99,15 @@ describe('PublicVoiceInterviewPage — Interview Integrity & Finalize Pipeline',
       expect(mockVapiStart).toHaveBeenCalled()
     })
 
-    // Confirm active live state
+    // Confirm active live state and visual elements
     expect(screen.getByText(/Live Session/i)).toBeInTheDocument()
+    expect(screen.getByText(/Interview in Progress/i)).toBeInTheDocument()
+    expect(screen.getByText(/Your answers are being recorded securely/i)).toBeInTheDocument()
+    expect(screen.getByText(/Secure & Private/i)).toBeInTheDocument()
+    expect(screen.getByText(/Your responses are being recorded and will be used for evaluation purposes only/i)).toBeInTheDocument()
+
+    // STRICT CHECK: Ensure transcript box is NOT rendered on candidate page
+    expect(screen.queryByText(/Conversation transcript will appear here in real-time/i)).not.toBeInTheDocument()
 
     // STRICT CHECK: Ensure NO Finish or End Interview button exists in the DOM
     expect(screen.queryByRole('button', { name: /End Interview/i })).not.toBeInTheDocument()
