@@ -42,6 +42,11 @@ export default function SeekerDashboard() {
         setResumesCount(resumesRes.value.data?.length || 0)
       }
 
+      const isDismissed =
+        typeof window !== 'undefined' && user?._id
+          ? localStorage.getItem(`hirevia_seeker_onboarding_dismissed_${user._id}`) === 'true'
+          : false
+
       if (profileRes.status === 'fulfilled' && profileRes.value.success && profileRes.value.data) {
         const prof = profileRes.value.data
         setProfileData(prof)
@@ -49,11 +54,15 @@ export default function SeekerDashboard() {
           setHasProfile(true)
         } else {
           setHasProfile(false)
-          setShowProfileModal(true)
+          if (!isDismissed) {
+            setShowProfileModal(true)
+          }
         }
       } else {
         setHasProfile(false)
-        setShowProfileModal(true)
+        if (!isDismissed) {
+          setShowProfileModal(true)
+        }
       }
 
       if (jobsRes.status === 'fulfilled' && jobsRes.value.success) {
@@ -66,9 +75,20 @@ export default function SeekerDashboard() {
     }
   }
 
+  const handleCloseModal = () => {
+    setShowProfileModal(false)
+    if (typeof window !== 'undefined' && user?._id) {
+      localStorage.setItem(`hirevia_seeker_onboarding_dismissed_${user._id}`, 'true')
+    }
+  }
+
   const handleProfileSaved = (saved: ISeekerProfile) => {
     setProfileData(saved)
     setHasProfile(true)
+    setShowProfileModal(false)
+    if (typeof window !== 'undefined' && user?._id) {
+      localStorage.setItem(`hirevia_seeker_onboarding_dismissed_${user._id}`, 'true')
+    }
     setProfileSavedMsg('Professional profile saved successfully! Your candidate profile is now active.')
     setTimeout(() => setProfileSavedMsg(''), 5000)
   }
@@ -86,7 +106,7 @@ export default function SeekerDashboard() {
       {/* Onboarding Candidate Profile Modal */}
       <SeekerProfileModal
         isOpen={showProfileModal}
-        onClose={() => setShowProfileModal(false)}
+        onClose={handleCloseModal}
         onSaved={handleProfileSaved}
         initialProfile={profileData}
         profileExists={!!profileData?._id}

@@ -41,6 +41,11 @@ export default function CompanyDashboard() {
         setJobs(jobsRes.value.data.jobs || [])
       }
 
+      const isDismissed =
+        typeof window !== 'undefined' && user?._id
+          ? localStorage.getItem(`hirevia_company_onboarding_dismissed_${user._id}`) === 'true'
+          : false
+
       if (profileRes.status === 'fulfilled' && profileRes.value.success && profileRes.value.data) {
         const prof = profileRes.value.data
         setProfileData(prof)
@@ -48,12 +53,16 @@ export default function CompanyDashboard() {
           setHasProfile(true)
         } else {
           setHasProfile(false)
-          setShowProfileModal(true)
+          if (!isDismissed) {
+            setShowProfileModal(true)
+          }
         }
       } else {
         // Profile does not exist yet (expected for new company registration/Google login)
         setHasProfile(false)
-        setShowProfileModal(true)
+        if (!isDismissed) {
+          setShowProfileModal(true)
+        }
       }
 
       if (subRes.status === 'fulfilled' && subRes.value.success && subRes.value.data) {
@@ -80,9 +89,20 @@ export default function CompanyDashboard() {
     }
   }
 
+  const handleCloseModal = () => {
+    setShowProfileModal(false)
+    if (typeof window !== 'undefined' && user?._id) {
+      localStorage.setItem(`hirevia_company_onboarding_dismissed_${user._id}`, 'true')
+    }
+  }
+
   const handleProfileSaved = (saved: ICompanyProfile) => {
     setProfileData(saved)
     setHasProfile(true)
+    setShowProfileModal(false)
+    if (typeof window !== 'undefined' && user?._id) {
+      localStorage.setItem(`hirevia_company_onboarding_dismissed_${user._id}`, 'true')
+    }
     setProfileSavedMsg('Company profile saved successfully! Your organization details are now active.')
     setTimeout(() => setProfileSavedMsg(''), 5000)
   }
@@ -103,7 +123,7 @@ export default function CompanyDashboard() {
       {/* Onboarding Profile Modal */}
       <CompanyProfileModal
         isOpen={showProfileModal}
-        onClose={() => setShowProfileModal(false)}
+        onClose={handleCloseModal}
         onSaved={handleProfileSaved}
         initialProfile={profileData}
         profileExists={!!profileData?._id}
