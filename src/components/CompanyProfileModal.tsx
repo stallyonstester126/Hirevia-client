@@ -74,15 +74,16 @@ export default function CompanyProfileModal({
 
     try {
       let res: { success: boolean; data: ICompanyProfile }
-      if (profileExists) {
+      try {
         res = await apiClient.patch<ICompanyProfile>('/company/profile', payload)
-      } else {
+      } catch (patchErr: any) {
+        // If profile doesn't exist yet (404), create it via POST
         res = await apiClient.post<ICompanyProfile>('/company/profile', payload)
       }
       onSaved(res.data)
       onClose()
     } catch (err: any) {
-      setErrorMsg(err.message || 'Failed to save company profile. Please try again.')
+      setErrorMsg(err.message || 'Failed to save company profile. Please check your inputs.')
     } finally {
       setIsSaving(false)
     }

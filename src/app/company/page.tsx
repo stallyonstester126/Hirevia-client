@@ -25,7 +25,7 @@ export default function CompanyDashboard() {
 
   useEffect(() => {
     fetchDashboardData()
-  }, [])
+  }, [user?._id])
 
   const fetchDashboardData = async () => {
     setLoading(true)
@@ -41,9 +41,11 @@ export default function CompanyDashboard() {
         setJobs(jobsRes.value.data.jobs || [])
       }
 
+      const userIdKey = user?._id || 'default_company'
       const isDismissed =
-        typeof window !== 'undefined' && user?._id
-          ? localStorage.getItem(`hirevia_company_onboarding_dismissed_${user._id}`) === 'true'
+        typeof window !== 'undefined'
+          ? localStorage.getItem(`hirevia_company_onboarding_dismissed_${userIdKey}`) === 'true' ||
+            localStorage.getItem('hirevia_company_onboarding_dismissed_global') === 'true'
           : false
 
       if (profileRes.status === 'fulfilled' && profileRes.value.success && profileRes.value.data) {
@@ -91,8 +93,10 @@ export default function CompanyDashboard() {
 
   const handleCloseModal = () => {
     setShowProfileModal(false)
-    if (typeof window !== 'undefined' && user?._id) {
-      localStorage.setItem(`hirevia_company_onboarding_dismissed_${user._id}`, 'true')
+    if (typeof window !== 'undefined') {
+      const userIdKey = user?._id || 'default_company'
+      localStorage.setItem(`hirevia_company_onboarding_dismissed_${userIdKey}`, 'true')
+      localStorage.setItem('hirevia_company_onboarding_dismissed_global', 'true')
     }
   }
 
@@ -100,8 +104,10 @@ export default function CompanyDashboard() {
     setProfileData(saved)
     setHasProfile(true)
     setShowProfileModal(false)
-    if (typeof window !== 'undefined' && user?._id) {
-      localStorage.setItem(`hirevia_company_onboarding_dismissed_${user._id}`, 'true')
+    if (typeof window !== 'undefined') {
+      const userIdKey = user?._id || 'default_company'
+      localStorage.setItem(`hirevia_company_onboarding_dismissed_${userIdKey}`, 'true')
+      localStorage.setItem('hirevia_company_onboarding_dismissed_global', 'true')
     }
     setProfileSavedMsg('Company profile saved successfully! Your organization details are now active.')
     setTimeout(() => setProfileSavedMsg(''), 5000)
