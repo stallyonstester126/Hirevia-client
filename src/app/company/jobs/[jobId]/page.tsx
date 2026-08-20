@@ -111,7 +111,7 @@ export default function CompanyJobDetailPage() {
       title: 'Close Job Posting?',
       message: 'Are you sure you want to close this job? Candidates will no longer be able to submit applications.',
       confirmText: 'Close Job',
-      variant: 'warning',
+      variant: 'primary',
       onConfirm: async () => {
         setConfirmConfig((prev) => ({ ...prev, isOpen: false }))
         setActionLoading(true)
@@ -138,7 +138,7 @@ export default function CompanyJobDetailPage() {
       title: 'Delete Draft Job?',
       message: 'Are you sure you want to delete this draft job? This action cannot be undone.',
       confirmText: 'Delete Job',
-      variant: 'danger',
+      variant: 'primary',
       onConfirm: async () => {
         setConfirmConfig((prev) => ({ ...prev, isOpen: false }))
         setActionLoading(true)
@@ -301,7 +301,7 @@ export default function CompanyJobDetailPage() {
                 type="button"
                 onClick={handleDeleteJob}
                 disabled={actionLoading}
-                className="p-2.5 border border-rose-200 hover:bg-rose-50 text-rose-600 rounded-xl transition cursor-pointer"
+                className="p-2.5 border border-blue-200 hover:bg-blue-50 text-[#146BFF] rounded-xl transition cursor-pointer"
                 aria-label="Delete job"
                 title="Delete job"
               >
@@ -432,7 +432,7 @@ export default function CompanyJobDetailPage() {
                 type="button"
                 onClick={handleDeleteJob}
                 disabled={actionLoading}
-                className="px-4 py-2 border border-rose-200 hover:bg-rose-50 text-rose-600 text-xs font-semibold rounded-xl transition disabled:opacity-50 cursor-pointer"
+                className="px-4 py-2 border border-blue-200 hover:bg-blue-50 text-[#146BFF] text-xs font-semibold rounded-xl transition disabled:opacity-50 cursor-pointer"
               >
                 Delete Job
               </button>

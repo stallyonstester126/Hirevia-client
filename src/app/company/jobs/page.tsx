@@ -129,7 +129,7 @@ export default function CompanyJobsPage() {
       title: 'Close Job Posting?',
       message: 'Are you sure you want to close this job? Candidates will no longer be able to submit new applications.',
       confirmText: 'Close Job',
-      variant: 'warning',
+      variant: 'primary',
       onConfirm: async () => {
         setConfirmConfig((prev) => ({ ...prev, isOpen: false }))
         setActionLoadingId(jobId)
@@ -156,7 +156,7 @@ export default function CompanyJobsPage() {
       title: 'Delete Draft Job?',
       message: 'Are you sure you want to delete this draft job posting? This action cannot be undone.',
       confirmText: 'Delete Job',
-      variant: 'danger',
+      variant: 'primary',
       onConfirm: async () => {
         setConfirmConfig((prev) => ({ ...prev, isOpen: false }))
         setActionLoadingId(jobId)
@@ -443,7 +443,7 @@ export default function CompanyJobsPage() {
                         type="button"
                         onClick={() => handleDeleteJob(job._id)}
                         disabled={isActionLoading}
-                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition disabled:opacity-50 cursor-pointer"
+                        className="p-1.5 text-slate-400 hover:text-[#146BFF] hover:bg-blue-50 rounded-xl transition disabled:opacity-50 cursor-pointer"
                         aria-label="Delete job"
                         title="Delete job"
                       >

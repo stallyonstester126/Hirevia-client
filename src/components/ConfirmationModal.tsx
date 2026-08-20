@@ -48,32 +48,32 @@ export default function ConfirmationModal({
     switch (variant) {
       case 'warning':
         return {
-          iconBg: 'bg-amber-100 text-amber-600',
-          btnBg: 'bg-amber-600 hover:bg-amber-700 text-white shadow-amber-500/20',
+          iconBg: 'bg-blue-50 text-[#146BFF] border border-blue-100',
+          btnBg: 'bg-[#146BFF] hover:bg-[#0E5CE8] text-white shadow-blue-500/20',
           icon: (
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
           ),
         }
-      case 'primary':
+      case 'danger':
         return {
-          iconBg: 'bg-blue-100 text-[#146BFF]',
+          iconBg: 'bg-blue-50 text-[#146BFF] border border-blue-100',
+          btnBg: 'bg-[#146BFF] hover:bg-[#0E5CE8] text-white shadow-blue-500/20',
+          icon: (
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          ),
+        }
+      case 'primary':
+      default:
+        return {
+          iconBg: 'bg-blue-50 text-[#146BFF] border border-blue-100',
           btnBg: 'bg-[#146BFF] hover:bg-[#0E5CE8] text-white shadow-blue-500/20',
           icon: (
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          ),
-        }
-      case 'danger':
-      default:
-        return {
-          iconBg: 'bg-rose-100 text-rose-600',
-          btnBg: 'bg-rose-600 hover:bg-rose-700 text-white shadow-rose-500/20',
-          icon: (
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
             </svg>
           ),
         }
